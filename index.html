@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>MessMate</title><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#15803D"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+:root{color-scheme:light;
+--primary:#15803D;--primary-2:#16A34A;--primary-hover:#166534;--primary-light:#DCFCE7;
+--background:#F8FAFC;--surface:#FFFFFF;--text-primary:#17211B;--text-secondary:#64748B;--border:#E2E8F0;
+--success:#15803D;--success-bg:#DCFCE7;--warning:#B45309;--warning-bg:#FEF3C7;
+--danger:#DC2626;--danger-text:#B91C1C;--danger-bg:#FEE2E2;--info:#1D4ED8;--info-bg:#DBEAFE;
+--neutral-bg:#F1F5F9;--disabled-bg:#E2E8F0;--disabled-text:#475569;
+--sp-1:4px;--sp-2:8px;--sp-3:12px;--sp-4:16px;--sp-5:20px;--sp-6:24px;
+--r-card:20px;--r-input:14px;--r-btn:14px;--shadow:0 1px 2px rgba(15,23,42,.05),0 1px 3px rgba(15,23,42,.04);
+--g:var(--primary);--r:var(--danger);--m:var(--text-secondary);--b:var(--border);--c:var(--surface);--t:var(--text-primary);--bg:var(--background)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--background);color:var(--text-primary);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+#app{max-width:520px;margin:0 auto;padding:0 var(--sp-4) calc(104px + env(safe-area-inset-bottom,0px))}
+:focus-visible{outline:3px solid rgba(21,128,61,.5);outline-offset:2px}
+h1,h2,p{overflow-wrap:anywhere}
+/* header */
+.hd{background:var(--primary);color:#fff;margin:0 calc(-1*var(--sp-4)) var(--sp-4);padding:calc(18px + env(safe-area-inset-top,0px)) var(--sp-5) var(--sp-5);border-radius:0 0 24px 24px}
+.hd h1{margin:0;font-size:28px;line-height:1.2;font-weight:800;letter-spacing:-.01em}
+.hd p{margin:4px 0 0;font-size:16px;font-weight:500}.hd p.dt{font-size:14px;font-weight:400;color:#F0FDF4;margin-top:2px}
+.hd .btn.sm{margin-bottom:var(--sp-3);border-color:transparent}
+/* cards */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card);padding:var(--sp-5);margin-bottom:var(--sp-4);box-shadow:var(--shadow)}
+.card.in{background:var(--background);box-shadow:none;margin:var(--sp-3) 0 0}
+.card h2{margin:0 0 var(--sp-3);font-size:20px;font-weight:600;line-height:1.3;display:flex;align-items:center;gap:var(--sp-2)}
+.sec{margin:var(--sp-6) 2px var(--sp-3);font-size:20px;font-weight:600;line-height:1.3}
+.row{display:flex;justify-content:space-between;align-items:center;gap:var(--sp-3)}
+.m{color:var(--text-secondary);font-size:14px;line-height:1.45}
+.ic{flex:none;vertical-align:middle}
+.mt{display:flex;align-items:center;gap:var(--sp-3);min-width:0}.mt h2{margin:0}
+.mi{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:50%;background:var(--primary-light);color:var(--primary);flex:none}
+.card>p.m{margin:var(--sp-3) 0}
+/* chips */
+.chip{white-space:nowrap;flex:none;display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;font-size:14px;font-weight:600;line-height:1.3;background:var(--success-bg);color:var(--success)}
+.chip.r{background:var(--danger-bg);color:var(--danger-text)}.chip.y{background:var(--warning-bg);color:var(--warning)}.chip.i{background:var(--info-bg);color:var(--info)}.chip.n{background:var(--neutral-bg);color:var(--disabled-text)}
+/* buttons */
+button,select,textarea,input{font:inherit;color:var(--text-primary)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-2);width:100%;min-height:48px;padding:12px var(--sp-4);border:1px solid var(--border);border-radius:var(--r-btn);background:var(--surface);color:var(--primary);font-size:16px;font-weight:600;line-height:1.2;cursor:pointer;transition:background-color .15s,border-color .15s}
+.btn:hover{background:var(--primary-light)}.btn:active{background:#BBF7D0}
+.btn.out{border:1.5px solid var(--primary)}
+.btn.link{border-color:transparent;background:none;min-height:44px}
+.btn.pri{background:var(--primary);border-color:var(--primary);color:#fff;min-height:52px;font-size:17px}
+.btn.pri:hover{background:var(--primary-hover);border-color:var(--primary-hover)}.btn.pri:active{background:var(--primary-hover)}
+.btn.on-p{background:var(--primary);border-color:var(--primary);color:#fff}
+.btn.on-a{background:var(--danger);border-color:var(--danger);color:#fff}
+.btn.sm{width:auto;min-height:40px;padding:8px 14px;font-size:15px}
+.btn:disabled,.btn.pri:disabled{background:var(--disabled-bg);border-color:var(--disabled-bg);color:var(--disabled-text);cursor:not-allowed}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--neutral-bg);border-radius:16px;padding:5px;margin-bottom:var(--sp-4)}
+.seg button{min-height:46px;border:0;border-radius:12px;background:transparent;color:var(--disabled-text);font-size:15px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.seg button[aria-pressed=true]{background:#fff;color:var(--primary);box-shadow:var(--shadow)}
+.stack>*+*{margin-top:var(--sp-3)}
+/* forms */
+.fl{display:block;margin:0 0 var(--sp-4)}.fl>span{display:block;font-size:14px;font-weight:600;margin-bottom:6px}
+select,textarea,input.tx,input[type=date]{width:100%;min-height:50px;border:1px solid var(--border);background:#fff;border-radius:var(--r-input);padding:12px 14px;font-size:16px}
+textarea{resize:vertical}
+::placeholder{color:var(--text-secondary);opacity:1}
+select:focus,textarea:focus,input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(21,128,61,.2)}
+.pw{position:relative}.pw input{padding-right:52px}
+.pw button{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:44px;height:44px;border:0;background:none;color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;border-radius:12px}
+/* banners, stats, lists */
+.banner{display:flex;gap:10px;align-items:flex-start;border-radius:16px;padding:14px var(--sp-4);margin-bottom:var(--sp-4);font-weight:600;font-size:15px;background:var(--info-bg);color:var(--info)}
+.banner.ok{background:var(--success-bg);color:var(--success)}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-3)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:var(--sp-3)}
+.stat{background:var(--background);border:1px solid var(--border);border-radius:16px;padding:var(--sp-3) 6px;text-align:center}
+.stat b{display:block;font-size:24px;line-height:1.2;font-weight:700;color:var(--text-primary)}
+.stat span{display:block;font-size:14px;color:var(--text-secondary);margin-top:2px;line-height:1.3}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle}.dot.g{background:var(--primary)}.dot.r{background:var(--danger)}.dot.k{background:#94A3B8}
+.kv{display:flex;justify-content:space-between;align-items:center;gap:var(--sp-3);padding:var(--sp-3) 0;border-bottom:1px solid var(--border)}.kv:last-child{border:0;padding-bottom:0}.kv:first-of-type{padding-top:0}
+.kv>b{font-weight:600;text-align:right;overflow-wrap:anywhere}.kv>span:first-child{display:flex;align-items:center;gap:var(--sp-2);min-width:0}
+.mrow{display:flex;align-items:center;gap:var(--sp-3);margin-top:var(--sp-3)}.mrow .lab{flex:0 0 84px;font-weight:600}.mrow .bt{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2)}.mrow .btn{min-height:44px;padding:8px}
+label.opt{display:flex;gap:10px;align-items:center;padding:12px 4px;border-bottom:1px solid var(--border)}
+.gauge{text-align:center}.gauge svg{width:100%;max-width:230px;display:block;margin:0 auto}
+.clickable{cursor:pointer}
+/* nav */
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:5;background:#fff;border-top:1px solid var(--border);padding-bottom:env(safe-area-inset-bottom,0px)}
+.nav:empty{display:none}
+.nav div{display:flex;max-width:520px;margin:0 auto}
+.nav button{flex:1;min-width:0;min-height:62px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px 2px;background:none;border:0;color:var(--text-secondary);font-size:12px;font-weight:500;cursor:pointer}
+.nav .pill{display:flex;align-items:center;justify-content:center;width:56px;height:30px;border-radius:99px}
+.nav button.act{color:var(--primary);font-weight:700}.nav button.act .pill{background:var(--primary-light)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));background:var(--text-primary);color:#fff;padding:12px 18px;border-radius:14px;z-index:9;max-width:92%;text-align:center;font-size:15px;box-shadow:0 4px 12px rgba(0,0,0,.2)}
+@media(min-width:768px){#app{max-width:600px}.nav div{max-width:600px}.hd{border-radius:0 0 28px 28px}}
+@media(max-width:380px){.hd h1{font-size:26px}.card{padding:var(--sp-4)}.mrow .lab{flex-basis:76px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+</style></head><body><main id="app"></main><nav class="nav" id="nav" aria-label="Main navigation"></nav>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// ===== PASTE YOUR SUPABASE DETAILS HERE (Project Settings > API) =====
+const SB_URL='https://adegvifdexzognfglmvs.supabase.co',SB_KEY='sb_publishable_gCj4Z9cmYErA6_sbJ-v9KQ_L02jbmAn';
+// =====================================================================
+const OWNER_LINK=/[?&]owner(=|&|$)/.test(location.search)||location.hash==='#owner';
+const RECOVERY=/type=recovery/.test(location.hash+location.search);
+const cfgOk=()=>!/PASTE_/.test(SB_URL+SB_KEY),sb=cfgOk()?supabase.createClient(SB_URL,SB_KEY):null;
+const MEALS=[['L','🍛','Lunch'],['D','🍽️','Dinner']];
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+let S,tab='home',ui={reason:'Going home',note:'',date:''},toastMsg='';
+const pad=n=>String(n).padStart(2,'0');
+const key=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const fd=k=>{const[y,m,d]=k.split('-');return +d+' '+MON[m-1]};
+const fdy=k=>fd(k)+' '+k.slice(0,4);
+const ft=iso=>{const d=new Date(iso);let h=d.getHours();return(h%12||12)+':'+pad(d.getMinutes())+' '+(h<12?'AM':'PM')};
+let OFF=0;
+function now(){return new Date(Date.now()+OFF+19800000+new Date().getTimezoneOffset()*60000)}
+const mins=()=>{const d=now();return d.getHours()*60+d.getMinutes()};
+const today=()=>key(now());
+const blank=()=>({students:[],att:{},pay:{},leaves:[],user:null,student:null,loading:false});
+const email=m=>m+'@messmate.app';
+function save(){}
+async function all(q){let out=[],i=0;for(;;){const{data,error}=await q().range(i,i+999);if(error)throw error;out=out.concat(data);if(data.length<1000)break;i+=1000}return out}
+const mapSt=p=>({id:p.student_code,uid:p.id,name:p.name,room:p.room||'Not assigned',phone:p.mobile,location:p.location||'',fee:p.monthly_fee});
+const mapLv=(r,c)=>({id:r.id,sid:c,date:r.date,reason:r.reason,note:r.note||'',appliedAt:r.applied_at,status:'APPLIED'});
+async function loadData(){const{data:{session}}=await sb.auth.getSession();const n=blank();if(!session){S=n;return}
+try{const t=await sb.rpc('server_now');if(t.data)OFF=new Date(t.data).getTime()-Date.now()}catch(e){}
+const{data:me}=await sb.from('profiles').select('*').eq('id',session.user.id).single();if(!me){await sb.auth.signOut();S=n;return}
+const owner=me.role==='owner',ms=today().slice(0,8)+'01';
+const profs=owner?await all(()=>sb.from('profiles').select('*').eq('role','student').order('student_code')):[me];
+const A=await all(()=>{const q=sb.from('attendance').select('*').order('id');return owner?q.gte('date',ms):q});
+const L=await all(()=>{const q=sb.from('leaves').select('*').order('id');return owner?q.gte('date',ms):q});
+const P=await all(()=>sb.from('payments').select('*').order('paid_on').order('id'));
+n.students=profs.map(mapSt);const code={};profs.forEach(p=>code[p.id]=p.student_code);
+A.forEach(r=>{const c=code[r.student_id];if(!c)return;n.att[c]=n.att[c]||{};n.att[c][r.date]=n.att[c][r.date]||{};n.att[c][r.date][r.meal]=r.status});
+L.forEach(r=>{const c=code[r.student_id];if(c)n.leaves.push(mapLv(r,c))});
+P.forEach(r=>{const c=code[r.student_id];if(!c)return;(n.pay[c]=n.pay[c]||[]).push({d:r.paid_on,amt:r.amount,mode:r.mode})});
+n.user={role:me.role,id:owner?'owner':me.student_code};S=n;sync()}
+async function boot(){try{await loadData()}catch(e){S=blank();toast('Could not load data. Check your internet.')}}
+const okMail=e=>/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e);
+async function doLogin(){const em=(ui.lid||'').trim().toLowerCase(),pw=ui.lpin||'';
+if(!okMail(em))return toast('Enter a valid email address');if(pw.length<6)return toast('Password must be at least 6 characters');
+const{error}=await sb.auth.signInWithPassword({email:em,password:pw});
+if(error&&/not confirmed/i.test(error.message)){ui.vemail=em;ui.vcode='';ui.mode='verify';ui.vnext=Date.now()+60000;try{await sb.auth.resend({type:'signup',email:em})}catch(e){}render();return toast('Please verify your email first. We sent you a new code.')}
+if(error)return toast('Wrong email or password');
+await boot();const want=ui.lrole==='owner'?'owner':'student';
+if(S.user&&S.user.role!==want){await sb.auth.signOut();S=blank();ui.lpin='';render();return toast(want==='owner'?'This is a student account. Please use the Student login.':'This is a mess owner account. Please use the Mess Owner login.')}
+ui.lid='';ui.lpin='';tab=S.user&&S.user.role==='owner'?'otoday':'home';render();scrollTo(0,0)}
+async function doForgot(){const em=(ui.fe||'').trim().toLowerCase();if(!okMail(em))return toast('Enter the email you signed up with');
+const{error}=await sb.auth.resetPasswordForEmail(em,{redirectTo:location.origin+location.pathname});
+if(error)return toast(/rate|limit/i.test(error.message)?'Too many requests. Please wait a few minutes and try again.':'Could not send the email: '+error.message);
+toast('If this email is registered, a reset link has been sent. Check your inbox and spam folder.')}
+async function doReset(){const a=ui.np||'',b=ui.np2||'';if(a.length<6)return toast('Password must be at least 6 characters');if(a!==b)return toast('Passwords do not match');
+const{error}=await sb.auth.updateUser({password:a});if(error)return toast('Could not change password: '+error.message);
+ui.recovery=false;ui.np=ui.np2='';try{history.replaceState(null,'',location.pathname)}catch(e){}
+await boot();tab=S.user&&S.user.role==='owner'?'otoday':'home';render();scrollTo(0,0);toast('Password changed successfully')}
+async function doVerify(){const em=ui.vemail,code=(ui.vcode||'').replace(/\s/g,'');if(!/^\d{6,8}$/.test(code))return toast('Enter the code from your email');
+const{error}=await sb.auth.verifyOtp({email:em,token:code,type:'signup'});
+if(error)return toast(/expired|invalid/i.test(error.message)?'That code is incorrect or has expired. Tap Resend code to get a new one.':'Could not verify: '+error.message);
+await boot();ui.vcode='';ui.vemail='';ui.mode='login';tab='home';render();scrollTo(0,0);if(S.user)toast('Email verified! Welcome to MessMate.');else toast('Email verified. Please log in.')}
+async function doResend(){const wait=Math.ceil(((ui.vnext||0)-Date.now())/1000);if(wait>0)return toast('Please wait '+wait+' seconds before asking for another code.');
+const{error}=await sb.auth.resend({type:'signup',email:ui.vemail});if(error)return toast(/rate|limit/i.test(error.message)?'Too many emails sent. Please wait a few minutes.':'Could not send the code: '+error.message);
+ui.vnext=Date.now()+60000;toast('A new code was sent to '+ui.vemail+'. Check spam too.')}
+async function doSignup(){const n=(ui.sn||'').trim(),em=(ui.se||'').trim().toLowerCase(),ph=(ui.sm||'').trim(),lc=(ui.sl||'').trim(),pw=ui.sp||'';
+if(n.length<2)return toast('Enter your full name');if(!okMail(em))return toast('Enter a valid email address');if(!/^\d{10}$/.test(ph))return toast('Enter a valid 10-digit mobile number');if(pw.length<6)return toast('Password must be at least 6 characters');
+const{data,error}=await sb.auth.signUp({email:em,password:pw,options:{data:{name:n,location:lc,mobile:ph}}});
+if(error)return toast(/registered/i.test(error.message)?'This email is already registered. Please log in.':/rate/i.test(error.message)?'Too many attempts. Wait a few minutes and try again.':/database/i.test(error.message)?'Could not create the account. This mobile number may already be registered. Try a different number, or log in.':'Sign up failed: '+error.message);
+if(data&&data.user&&Array.isArray(data.user.identities)&&data.user.identities.length===0)return toast('This email is already registered. Please log in.');
+if(!data.session){ui.vemail=em;ui.vcode='';ui.mode='verify';ui.vnext=Date.now()+60000;render();scrollTo(0,0);return toast('We sent a verification code to '+em)}
+await boot();ui.sn=ui.se=ui.sm=ui.sl=ui.sp='';ui.mode='login';tab='home';render();scrollTo(0,0);if(S.user)toast('Account created! Your Student ID: '+S.user.id)}
+async function ownerMark(code,m,v){if(!S.user||S.user.role!=='owner')return;const st=S.students.find(x=>x.id===code);if(!st)return;const k=today();
+if(withStu(st,()=>leaveOn(k)))return toast('Student is on leave today');
+const{error}=await sb.from('attendance').upsert({student_id:st.uid,date:k,meal:m,status:v},{onConflict:'student_id,date,meal'});if(error)return toast('Could not save. Try again.');
+S.att[code]=S.att[code]||{};S.att[code][k]=S.att[code][k]||{};S.att[code][k][m]=v;render()}
+async function openStudent(code){const st=S.students.find(x=>x.id===code);if(!st)return;
+try{const A=await all(()=>sb.from('attendance').select('*').eq('student_id',st.uid).order('id')),L=await all(()=>sb.from('leaves').select('*').eq('student_id',st.uid).order('id'));
+S.att[code]={};A.forEach(r=>{S.att[code][r.date]=S.att[code][r.date]||{};S.att[code][r.date][r.meal]=r.status});
+S.leaves=S.leaves.filter(l=>l.sid!==code).concat(L.map(r=>mapLv(r,code)))}catch(e){return toast('Could not load student')}
+ui.view=code;ui.eroom=st.room;ui.efee=String(st.fee);ui.pamt='';ui.pmode='UPI';render();scrollTo(0,0)}
+async function recordPayment(){const st=S.students.find(x=>x.id===ui.view),amt=parseInt(ui.pamt,10);if(!st)return;if(!(amt>0))return toast('Enter a valid amount');
+const{data,error}=await sb.from('payments').insert({student_id:st.uid,amount:amt,mode:ui.pmode||'UPI'}).select().single();if(error)return toast('Could not save payment');
+(S.pay[st.id]=S.pay[st.id]||[]).push({d:data.paid_on,amt,mode:data.mode});ui.pamt='';toast('Payment recorded')}
+async function saveStudent(){const st=S.students.find(x=>x.id===ui.view),fee=parseInt(ui.efee,10),room=(ui.eroom||'').trim();if(!st)return;if(!(fee>=0)||!room)return toast('Enter room and fee');
+const{error}=await sb.from('profiles').update({room,monthly_fee:fee}).eq('id',st.uid);if(error)return toast('Could not save');st.room=room;st.fee=fee;toast('Saved')}
+function exportCsv(){const rows=[['Name','Student ID','Mobile','Room','Present days','Absent days','Leave days','Total meals','Fee','Paid this month','Remaining']];
+S.students.forEach(st=>withStu(st,()=>{const s=summary(),paid=PY().filter(p=>p.d.slice(0,7)===today().slice(0,7)).reduce((a,p)=>a+p.amt,0);rows.push([st.name,st.id,st.phone,st.room,s.P,s.A,s.V,s.L+s.D,st.fee,paid,Math.max(0,st.fee-paid)])}));
+const csv=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='messmate-'+today().slice(0,7)+'.csv';a.click()}
+const dueDate=()=>{const n=now(),d=new Date(n.getFullYear(),n.getMonth()+(n.getDate()>5?1:0),5);return fdy(key(d))};
+function toast(m){toastMsg=m;render();setTimeout(()=>{toastMsg='';render()},3500)}
+const myLeaves=()=>S.leaves.filter(l=>l.sid===S.student.id);
+const leaveOn=k=>myLeaves().find(l=>l.date===k);
+const fin=()=>mins()>=1320;
+const leaveState=()=>leaveOn(today())?'APPLIED':mins()>=1020?'CLOSED':'NOT_APPLIED';
+function eff(k,m){if(leaveOn(k))return'L';const v=AT()[k]&&AT()[k][m];if(v)return v;if(k===today()&&fin())return'P';return null}
+function day(k){const e=MEALS.map(x=>eff(k,x[0]));if(e.includes('L'))return'Leave';if(e.includes('A'))return'Absent';if(e.includes('P'))return'Present';return'Not Marked'}
+function setMeal(m,v){return toast('Only the mess owner can mark attendance');const k=today();if(leaveOn(k))return toast('You are on leave today');if(fin())return toast('Attendance finalized for today');
+const a=AT();a[k]=a[k]||{};a[k][m]=v;save();render()}
+async function applyLeave(){const k=today();if(leaveOn(k))return toast('Leave already applied for today');if(mins()>=1020)return toast('Leave application closed for today');
+const{data,error}=await sb.from('leaves').insert({student_id:S.student.uid,date:k,reason:ui.reason,note:ui.note.trim()}).select().single();
+if(error)return toast(error.code==='23505'?'Leave already applied for today':'Leave application closed for today');
+S.leaves.push(mapLv(data,S.student.id));ui.note='';toast('Leave Applied Successfully')}
+function summary(all){const t=today(),pre=t.slice(0,7),ks=new Set([...Object.keys(AT()),...myLeaves().map(l=>l.date),t]);
+const r={B:0,L:0,D:0,P:0,A:0,V:0};ks.forEach(k=>{if(!all&&k.slice(0,7)!==pre)return;MEALS.forEach(x=>{if(eff(k,x[0])==='P')r[x[0]]++});const d=day(k);if(d==='Present')r.P++;else if(d==='Absent')r.A++;else if(d==='Leave')r.V++});return r}
+/* ===== icons (Lucide-style, inline so there is nothing extra to download) ===== */
+const IC={
+home:'<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
+utensils:'<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>',
+cal:'<rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+wallet:'<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',
+user:'<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+dash:'<rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>',
+clip:'<rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>',
+check:'<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+x:'<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/>',
+clock:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+circle:'<circle cx="12" cy="12" r="10"/>',
+info:'<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
+lock:'<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+eye:'<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
+eyeoff:'<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><path d="m2 2 20 20"/>',
+download:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><path d="M12 15V3"/>',
+back:'<path d="m15 18-6-6 6-6"/>',
+logout:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><path d="M21 12H9"/>'};
+const ic=(n,sz)=>`<svg class="ic" width="${sz||20}" height="${sz||20}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${IC[n]}</svg>`;
+const SM={P:['','check','Present'],A:['r','x','Absent'],L:['i','cal','Leave'],N:['n','circle','Not marked']};
+const stChip=v=>{const m=SM[v||'N'];return`<span class="chip ${m[0]}">${ic(m[1],16)}${m[2]}</span>`};
+const dchip=(d,pre)=>{const m=d==='Present'?SM.P:d==='Absent'?SM.A:d==='Leave'?SM.L:SM.N;return`<span class="chip ${m[0]}">${ic(m[1],16)}${pre||''}${d==='Not Marked'?'Not marked':d}</span>`};
+const F=(t,h)=>`<label class="fl"><span>${t}</span>${h}</label>`;
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pwf=(label,k,ph,ac)=>F(label,`<div class="pw"><input class="tx" type="password" data-in="${k}" value="${esc(ui[k]||'')}" placeholder="${ph}" autocomplete="${ac}"><button type="button" data-a="eye" aria-label="Show password">${ic('eye',20)}</button></div>`);
+const hd=(title,sub)=>`<div class="hd"><h1>${title}</h1><p>${sub}</p></div>`;
+/* ===== student screens ===== */
+function mealsBlock(k){return MEALS.map(x=>`<div class="kv"><span>${ic('utensils',18)}${x[2]}</span>${stChip(eff(k,x[0]))}</div>`).join('')}
+function dayCard(k,nested){const d=day(k);return`<div class="card${nested?' in':''}"><div class="row"><h2 style="margin:0">${fd(k)}</h2>${dchip(d)}</div><div style="margin-top:12px">${d==='Leave'?`<p class="m" style="margin:0">Leave reason: ${esc(leaveOn(k).reason)}</p>`:mealsBlock(k)}</div></div>`}
+function expiry(){const t=now(),pre=today().slice(0,7),n=myLeaves().filter(l=>l.date.slice(0,7)===pre).length,e=new Date(t.getFullYear(),t.getMonth()+1,0);e.setDate(e.getDate()+n);return{n,txt:fdy(key(e)),sub:n?' (+'+n+' leave day'+(n>1?'s':'')+')':''}}
+function ring(){const n=now(),dim=new Date(n.getFullYear(),n.getMonth()+1,0).getDate(),left=dim-n.getDate(),s=summary(),p=s.P,v=s.V,R=78,C=2*Math.PI*R,pct=Math.min(1,p/dim),len=C*pct,ang=-Math.PI/2+2*Math.PI*pct,kx=100+R*Math.cos(ang),ky=100+R*Math.sin(ang);
+const arc=p>0?`<circle cx="100" cy="100" r="${R}" fill="none" stroke="url(#rg)" stroke-width="18" stroke-linecap="round" stroke-dasharray="${len} ${C}" transform="rotate(-90 100 100)"/><circle cx="${kx}" cy="${ky}" r="11" fill="#15803D" stroke="#fff" stroke-width="4"/>`:'';
+return`<div class="card gauge"><svg viewBox="0 0 200 200" role="img" aria-label="${p} days present out of ${dim} days this month, ${v} leave days"><defs><linearGradient id="rg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4ADE80"/><stop offset="1" stop-color="#15803D"/></linearGradient></defs><circle cx="100" cy="100" r="${R}" fill="none" stroke="#E2E8F0" stroke-width="18"/>${arc}
+<circle cx="100" cy="100" r="62" fill="#fff"/><text x="100" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="#15803D" style="letter-spacing:.5px">PRESENT DAYS</text><text x="100" y="114" text-anchor="middle" font-size="40" font-weight="800" fill="#17211B">${p}</text><text x="100" y="130" text-anchor="middle" font-size="11" fill="#64748B">of ${dim} days</text>
+<circle cx="100" cy="153" r="17" fill="#DC2626" stroke="#fff" stroke-width="3"/><text x="100" y="159" text-anchor="middle" font-size="16" font-weight="800" fill="#fff">${v}</text></svg>
+<div class="grid3" style="margin-top:16px"><div class="stat"><b>${p}</b><span><i class="dot g"></i>Present</span></div><div class="stat"><b>${v}</b><span><i class="dot r"></i>Leave days</span></div><div class="stat"><b>${left}</b><span><i class="dot k"></i>Days left</span></div></div>
+<p class="m" style="margin:12px 0 0">Red circle = leave days · ${MON[n.getMonth()]} ${n.getFullYear()}</p></div>`}
+function home(){const t=today(),ls=leaveState(),l=leaveOn(t),d=day(t),f=fin();
+const banner=f?`<div class="banner ok">${ic('check',20)}<span>Attendance finalized: ${d==='Not Marked'?'—':d}</span></div>`:`<div class="banner">${ic('info',20)}<span>Daily attendance will be finalized after 10:00 PM.</span></div>`;
+const cards=MEALS.map(x=>{const v=eff(t,x[0]),closed=ls!=='NOT_APPLIED'&&!l;return`<div class="card"><div class="row"><div class="mt"><span class="mi">${ic('utensils',22)}</span><h2>${x[2]}</h2></div>${stChip(v)}</div>
+<p class="m">Attendance is marked by the mess owner.</p><button class="btn" data-a="goleave" ${closed?'disabled':''}>${ic(closed?'lock':'cal',18)}${l?'On leave today':closed?'Applications closed':'Apply leave'}</button></div>`}).join('');
+const s=summary();
+return`<div class="hd"><h1>MessMate</h1><p>Welcome, ${esc(S.student.name)}</p><p class="dt">${now().toDateString()} · ${ft(now())}</p></div>${ring()}${banner}${cards}${leaveCard()}
+<div class="card"><h2>Monthly Summary</h2><div class="stats">${[['Lunch',s.L],['Dinner',s.D],['Present Days',s.P],['Absent Days',s.A],['Leave Days',s.V],['Total Days',s.P+s.A+s.V]].map(a=>`<div class="stat"><b>${a[1]}</b><span>${a[0]}</span></div>`).join('')}</div>
+<div class="kv" style="margin-top:16px"><span>Total Meals</span><b>${s.L+s.D}</b></div><div class="kv"><span>Plan Expiry${expiry().sub}</span><b>${expiry().txt}</b></div></div>`}
+function leaveCard(){const ls=leaveState(),l=leaveOn(today()),lbl={NOT_APPLIED:'Not applied',APPLIED:'Applied',CLOSED:'Closed'}[ls];let body;
+if(l)body=`<span class="chip i">${ic('cal',16)}Leave Applied</span><div style="margin-top:12px"><div class="kv"><span>Date</span><b>${fdy(l.date)}</b></div><div class="kv"><span>Reason</span><b>${esc(l.reason)}</b></div>${l.note?`<div class="kv"><span>Note</span><b>${esc(l.note)}</b></div>`:''}<div class="kv"><span>Applied at</span><b>${ft(l.appliedAt)}</b></div><div class="kv"><span>Status</span><b>${l.status}</b></div></div>`;
+else if(ls==='CLOSED')body=`<span class="chip n">${ic('lock',16)}Applications Closed</span><p style="margin:12px 0 4px;font-weight:600">Leave application closed for today</p><p class="m" style="margin:0 0 16px">Closing time: 5:00 PM</p><button class="btn pri" disabled>${ic('lock',18)}Applications Closed</button>`;
+else body=`<span class="chip">${ic('check',16)}Applications Open</span><p class="m" style="margin:8px 0 16px">Leave available until 5:00 PM</p>${F('Leave reason',`<select data-in="reason">${['Going home','Sick','Family function','Other'].map(r=>`<option ${ui.reason===r?'selected':''}>${r}</option>`).join('')}</select>`)}${F('Note (optional)',`<textarea rows="2" data-in="note" placeholder="Add a short note">${esc(ui.note)}</textarea>`)}<button class="btn pri" data-a="apply">Apply Leave</button>`;
+return`<div class="card" id="leavecard"><h2>${ic('cal',22)}Apply for Today's Leave</h2><p class="m" style="margin:-4px 0 12px">Closing time: 5:00 PM · Status: ${lbl}</p>${body}</div>`}
+function meals(){const t=today();if(!ui.date)ui.date=t;const ks=[...new Set([...Object.keys(AT()),...myLeaves().map(l=>l.date),t])].sort().reverse();
+return`${hd('Meal History','Pick a date to see details')}<div class="card"><h2>Select date</h2>${F('Date',`<input type="date" value="${ui.date}" max="${t}" data-in="date">`)}${dayCard(ui.date,true)}</div><h2 class="sec">Previous days</h2>${ks.map(k=>dayCard(k)).join('')}`}
+function leave(){const L=myLeaves().slice().sort((a,b)=>b.date.localeCompare(a.date));
+return`${hd('Leave','Apply and review leave')}${leaveCard()}<h2 class="sec">Leave History</h2>${L.length?L.map(l=>`<div class="card"><div class="row"><b>${fdy(l.date)}</b><span class="chip i">${ic('cal',16)}${l.status==='APPLIED'?'Applied':esc(l.status)}</span></div><p class="m" style="margin:8px 0 0">Reason: ${esc(l.reason)}${l.note?'<br>Note: '+esc(l.note):''}<br>Applied at: ${ft(l.appliedAt)}</p></div>`).join(''):'<div class="card m">No leave applications yet.</div>'}`}
+function fees(){const f=S.student.fee,paid=PY().filter(p=>p.d.slice(0,7)===today().slice(0,7)).reduce((a,p)=>a+p.amt,0);
+return`${hd('Fees','Mess fee details')}<div class="card"><div class="kv"><span>Monthly Fee</span><b>₹${f}</b></div><div class="kv"><span>Paid this month</span><b style="color:var(--success)">₹${paid}</b></div><div class="kv"><span>Remaining</span><b style="color:var(--danger-text)">₹${Math.max(0,f-paid)}</b></div><div class="kv"><span>Due Date</span><b>${dueDate()}</b></div><div class="kv"><span>Payment Mode</span><b>UPI</b></div><div class="kv"><span>Plan Expiry${expiry().sub}</span><b>${expiry().txt}</b></div></div>
+<h2 class="sec">Payment History</h2>${PY().slice().reverse().map(p=>`<div class="card row"><div><b>₹${p.amt}</b><div class="m">${fdy(p.d)}</div></div><span class="chip">${ic('check',16)}${esc(p.mode)} · Paid</span></div>`).join('')}`}
+function profile(){const s=S.student;
+return`${hd('Profile',esc(s.name))}<div class="card">${[['Name',s.name],['Student ID',s.id],['Room Number',s.room],['Phone Number',s.phone],...(s.location?[['Location',s.location]]:[])].map(a=>`<div class="kv"><span>${a[0]}</span><b>${esc(a[1])}</b></div>`).join('')}</div>
+<button class="btn out" data-a="logout">${ic('logout',18)}Log out</button>`}
+const AT=()=>S.att[S.student.id]||(S.att[S.student.id]={}),PY=()=>S.pay[S.student.id]||[];
+function sync(){S.student=S.user&&S.user.role==='student'?S.students.find(x=>x.id===S.user.id)||null:null;if(S.user&&S.user.role==='student'&&!S.student)S.user=null}
+function withStu(st,fn){const o=S.student;S.student=st;try{return fn()}finally{S.student=o}}
+const allStats=()=>S.students.map(st=>withStu(st,()=>({st,s:summary(),l:leaveOn(today()),td:day(today())})));
+const tile=a=>`<div class="stat"><b>${a[1]}</b><span>${a[0]}</span></div>`;
+/* ===== sign in / sign up ===== */
+function resetScreen(){return`${hd('MessMate','Set a new password')}<div class="card"><h2>Choose a new password</h2>${pwf('New password','np','At least 6 characters','new-password')}${pwf('Confirm new password','np2','Re-enter the password','new-password')}<button class="btn pri" data-a="doreset">Save new password</button></div>`}
+function login(){const V=k=>esc(ui[k]||'');
+if(ui.mode==='forgot')return`${hd('MessMate','Reset your password')}<div class="card"><h2>Forgot password?</h2><p class="m" style="margin:0 0 16px">Enter your email and we will send you a link to set a new password.</p>${F('Email',`<input class="tx" type="email" data-in="fe" value="${V('fe')}" placeholder="you@example.com" autocomplete="email">`)}<div class="stack"><button class="btn pri" data-a="forgot">Send reset link</button><button class="btn link" data-a="smode" data-m="login">Back to log in</button></div></div>`;
+if(ui.mode==='verify')return`${hd('MessMate','Verify your email')}<div class="card"><h2>Enter your code</h2><p class="m" style="margin:0 0 16px">We sent a verification code to <b style="color:var(--text-primary)">${esc(ui.vemail||'')}</b>. It can take a minute. Check your spam folder too.</p>${F('Verification code',`<input class="tx" inputmode="numeric" autocomplete="one-time-code" maxlength="8" data-in="vcode" value="${V('vcode')}" placeholder="6-digit code" style="font-size:22px;letter-spacing:6px;text-align:center">`)}<div class="stack"><button class="btn pri" data-a="verify">Verify</button><button class="btn out" data-a="resend">Resend code</button><button class="btn link" data-a="smode" data-m="login">Back to log in</button></div></div>`;
+if(ui.mode==='signup')return`${hd('MessMate','Sign up to get started')}<div class="card"><h2>Create student account</h2>${F('Full name',`<input class="tx" data-in="sn" value="${V('sn')}" placeholder="Your full name" autocomplete="name">`)}${F('Email',`<input class="tx" type="email" data-in="se" value="${V('se')}" placeholder="you@example.com" autocomplete="email">`)}${F('Mobile number',`<input class="tx" type="tel" inputmode="numeric" maxlength="10" data-in="sm" value="${V('sm')}" placeholder="10-digit mobile number" autocomplete="tel">`)}${F('Location (optional)',`<input class="tx" data-in="sl" value="${V('sl')}" placeholder="City or hometown" autocomplete="off">`)}${pwf('Password','sp','At least 6 characters','new-password')}<div class="stack"><button class="btn pri" data-a="signup">Create Account</button><button class="btn out" data-a="smode" data-m="login">Already registered? Log in</button></div></div>`;
+const own=ui.lrole==='owner';
+const seg=`<div class="seg" role="group" aria-label="Login type"><button type="button" data-a="lrole" data-r="student" aria-pressed="${!own}">${ic('user',18)}Student</button><button type="button" data-a="lrole" data-r="owner" aria-pressed="${own}">${ic('dash',18)}Mess Owner</button></div>`;
+if(own)return`${hd('MessMate','Mess owner login')}<div class="card">${seg}<h2>Mess owner log in</h2>${F('Owner email',`<input class="tx" type="email" data-in="lid" value="${V('lid')}" placeholder="owner@example.com" autocomplete="email">`)}${pwf('Password','lpin','Your password','current-password')}<div class="stack"><button class="btn pri" data-a="login">Log in as owner</button><button class="btn link" data-a="smode" data-m="forgot">Forgot password?</button></div><p class="m" style="margin:16px 0 0;text-align:center">Owner accounts are set up by the app administrator. Students cannot sign up here.</p></div>`;
+return`${hd('MessMate','Student login')}<div class="card">${seg}<h2>Student log in</h2>${F('Email',`<input class="tx" type="email" data-in="lid" value="${V('lid')}" placeholder="you@example.com" autocomplete="email">`)}${pwf('Password','lpin','Your password','current-password')}<div class="stack"><button class="btn pri" data-a="login">Log in</button><button class="btn link" data-a="smode" data-m="forgot">Forgot password?</button><button class="btn out" data-a="smode" data-m="signup">New student? Sign up</button></div></div>`}
+/* ===== owner screens ===== */
+function oattend(){const R=S.students.map(st=>withStu(st,()=>({st,l:leaveOn(today()),e:MEALS.map(x=>eff(today(),x[0]))})));
+return`${hd('Mark Attendance',now().toDateString())}<p class="m" style="margin:0 2px 16px">Students cannot mark themselves. Tap to mark Present or Absent.</p>${R.map(r=>`<div class="card"><div class="row"><div style="min-width:0"><b>${esc(r.st.name)}</b><div class="m">${r.st.id} · Room ${esc(r.st.room)}</div></div>${r.l?`<span class="chip i">${ic('cal',16)}On leave</span>`:''}</div>${r.l?'':MEALS.map((x,i)=>`<div class="mrow"><span class="lab">${x[2]}</span><div class="bt"><button class="btn ${r.e[i]==='P'?'on-p':''}" aria-pressed="${r.e[i]==='P'}" data-a="omark" data-s="${r.st.id}" data-m="${x[0]}" data-v="P">Present</button><button class="btn ${r.e[i]==='A'?'on-a':''}" aria-pressed="${r.e[i]==='A'}" data-a="omark" data-s="${r.st.id}" data-m="${x[0]}" data-v="A">Absent</button></div></div>`).join('')}</div>`).join('')}`}
+function otoday(){const A=allStats(),on=A.filter(a=>a.l);
+return`<div class="hd"><h1>Owner Dashboard</h1><p class="dt">${now().toDateString()} · ${ft(now())}</p></div><div class="card"><div class="grid3">${[['Students',A.length],['On leave today',on.length],['Eating today',A.length-on.length]].map(tile).join('')}</div></div>
+<div class="card"><h2>${ic('cal',22)}On Leave Today</h2>${on.length?on.map(a=>`<div class="kv"><span style="display:block"><b>${esc(a.st.name)}</b><br><span class="m">Room ${esc(a.st.room)} · ${esc(a.l.reason)} · ${ft(a.l.appliedAt)}</span></span><span class="chip i">${ic('cal',16)}Leave</span></div>`).join(''):'<p class="m" style="margin:0">Nobody is on leave today.</p>'}</div><p class="m" style="margin:0 2px">Leave closes at 5:00 PM · attendance finalizes at 10:00 PM.</p>`}
+function odetail(st){return withStu(st,()=>{const m=summary(),a=summary(true),paid=PY().filter(p=>p.d.slice(0,7)===today().slice(0,7)).reduce((x,p)=>x+p.amt,0),fee=st.fee,L=myLeaves().slice().sort((x,y)=>y.date.localeCompare(x.date));
+return`<div class="hd"><button class="btn sm" data-a="oback">${ic('back',18)}Back</button><h1>${esc(st.name)}</h1><p>${st.id} · Room ${esc(st.room)}</p></div>
+<div class="card"><div class="kv"><span>Mobile</span><b>${esc(st.phone)}</b></div>${st.location?`<div class="kv"><span>Location</span><b>${esc(st.location)}</b></div>`:''}</div>
+<div class="card"><h2>Attendance: this month</h2><div class="grid3">${[['Present',m.P],['Absent',m.A],['On Leave',m.V]].map(tile).join('')}</div><h2 style="margin-top:20px">All time</h2><div class="grid3">${[['Present',a.P],['Absent',a.A],['On Leave',a.V]].map(tile).join('')}</div></div>
+<div class="card"><h2>Fees</h2><div class="kv"><span>Monthly Fee</span><b>₹${fee}</b></div><div class="kv"><span>Paid this month</span><b style="color:var(--success)">₹${paid}</b></div><div class="kv"><span>Remaining</span><b style="color:var(--danger-text)">₹${Math.max(0,fee-paid)}</b></div></div>
+<div class="card"><h2>Edit student</h2>${F('Room number',`<input class="tx" data-in="eroom" value="${esc(ui.eroom||'')}" placeholder="e.g. B-203">`)}${F('Monthly fee (₹)',`<input class="tx" type="number" inputmode="numeric" data-in="efee" value="${esc(ui.efee||'')}" placeholder="e.g. 3000">`)}<button class="btn out" data-a="osave">Save</button></div>
+<div class="card"><h2>Record payment</h2>${F('Amount (₹)',`<input class="tx" type="number" inputmode="numeric" data-in="pamt" value="${esc(ui.pamt||'')}" placeholder="e.g. 1000">`)}${F('Payment mode',`<select data-in="pmode">${['UPI','Cash'].map(m=>`<option ${ui.pmode===m?'selected':''}>${m}</option>`).join('')}</select>`)}<button class="btn pri" data-a="opay">Save payment</button></div>
+<div class="card"><h2>Payment History</h2>${PY().length?PY().slice().reverse().map(p=>`<div class="kv"><span>${fdy(p.d)}</span><b>₹${p.amt} · ${esc(p.mode)}</b></div>`).join(''):'<p class="m" style="margin:0">No payments yet.</p>'}</div>
+<div class="card"><h2>Leave History</h2>${L.length?L.map(l=>`<div class="kv"><span style="display:block">${fdy(l.date)}<br><span class="m">${esc(l.reason)}</span></span><span class="chip i">${ic('cal',16)}${l.status==='APPLIED'?'Applied':esc(l.status)}</span></div>`).join(''):'<p class="m" style="margin:0">No leaves.</p>'}</div>`})}
+function ostudents(){if(ui.view){const st=S.students.find(x=>x.id===ui.view);if(st)return odetail(st)}const A=allStats(),sm=f=>A.reduce((a,x)=>a+f(x),0);
+return`${hd('Students','Tap a student to view their account')}<button class="btn out" data-a="ocsv" style="margin-bottom:16px">${ic('download',18)}Download monthly report (CSV)</button><div class="card"><h2>All students this month</h2><div class="grid3">${[['Present Days',sm(x=>x.s.P)],['Absent Days',sm(x=>x.s.A)],['Leave Days',sm(x=>x.s.V)]].map(tile).join('')}</div><div class="kv" style="margin-top:16px"><span>Total Meals</span><b>${sm(x=>x.s.L+x.s.D)}</b></div></div>
+${A.map(x=>`<div class="card clickable" role="button" tabindex="0" data-a="oview" data-s="${x.st.id}" aria-label="View ${esc(x.st.name)}"><div class="row" style="align-items:flex-start"><div style="min-width:0;flex:1"><b>${esc(x.st.name)}</b><div class="m">${x.st.id} · Room ${esc(x.st.room)}${x.st.location?' · '+esc(x.st.location):''}</div></div>${dchip(x.td,'Today: ')}</div><div class="grid3" style="margin-top:12px">${[['Present',x.s.P],['Absent',x.s.A],['Leaves',x.s.V],['Lunch',x.s.L],['Dinner',x.s.D],['Meals',x.s.L+x.s.D]].map(tile).join('')}</div></div>`).join('')}`}
+function oprofile(){return`${hd('Profile','Mess Owner')}<div class="card"><div class="kv"><span>Role</span><b>Mess Owner</b></div><div class="kv"><span>Username</span><b>owner</b></div></div><button class="btn out" data-a="logout">${ic('logout',18)}Log out</button>`}
+/* ===== render ===== */
+function setView(html,navItems){document.getElementById('app').innerHTML=html+(toastMsg?`<div class="toast" role="status" aria-live="polite">${toastMsg}</div>`:'');
+document.getElementById('nav').innerHTML=navItems?`<div>${navItems.map(n=>`<button ${tab===n[0]?'aria-current="page"':''} class="${tab===n[0]?'act':''}" data-a="tab" data-t="${n[0]}"><span class="pill">${ic(n[1],22)}</span>${n[2]}</button>`).join('')}</div>`:''}
+function render(){const ae=document.activeElement;if(ae&&/INPUT|TEXTAREA|SELECT/.test(ae.tagName)&&!toastMsg&&ae.type!=='radio')return;
+if(S.loading){setView('<p class="m" style="text-align:center;margin-top:40vh">Loading…</p>');return}
+if(!cfgOk()){setView('<div class="hd"><h1>Setup needed</h1></div><div class="card">Open index.html and paste your Supabase Project URL and anon key near the top of the script. See README.md.</div>');return}
+if(ui.recovery){setView(resetScreen());return}
+const u=S.user;
+if(!u)setView(login());
+else if(u.role==='owner')setView(({otoday,oattend,ostudents,oprofile}[tab]||otoday)(),[['otoday','dash','Today'],['oattend','clip','Attendance'],['ostudents','users','Students'],['oprofile','user','Profile']]);
+else setView(({home,meals,leave,fees,profile}[tab]||home)(),[['home','home','Home'],['meals','utensils','Meals'],['leave','cal','Leave'],['fees','wallet','Fees'],['profile','user','Profile']])}
+
+let busy=false;
+document.addEventListener('click',async e=>{const b=e.target.closest('[data-a]');if(!b||b.disabled||busy)return;const a=b.dataset.a;if(a==='eye'){const i=b.parentElement.querySelector('input'),sh=i.type==='password';i.type=sh?'text':'password';b.innerHTML=ic(sh?'eyeoff':'eye',20);b.setAttribute('aria-label',sh?'Hide password':'Show password');return}if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();busy=true;
+try{if(a==='tab'){tab=b.dataset.t;ui.date='';ui.view='';render();scrollTo(0,0)}
+else if(a==='goleave'){tab='leave';render();scrollTo(0,0)}
+else if(a==='apply')await applyLeave();
+else if(a==='omark')await ownerMark(b.dataset.s,b.dataset.m,b.dataset.v);
+else if(a==='oview')await openStudent(b.dataset.s);
+else if(a==='oback'){ui.view='';render();scrollTo(0,0)}
+else if(a==='opay')await recordPayment();
+else if(a==='osave')await saveStudent();
+else if(a==='ocsv')exportCsv();
+else if(a==='smode'){ui.mode=b.dataset.m;render()}
+else if(a==='lrole'){ui.lrole=b.dataset.r;ui.mode='login';ui.lpin='';render()}
+else if(a==='login')await doLogin();
+else if(a==='forgot')await doForgot();
+else if(a==='doreset')await doReset();
+else if(a==='signup')await doSignup();
+else if(a==='verify')await doVerify();
+else if(a==='resend')await doResend();
+else if(a==='logout'){const wasOwner=S.user&&S.user.role==='owner';await sb.auth.signOut();S=blank();ui={reason:'Going home',note:'',date:'',lrole:wasOwner?'owner':'student'};tab='home';render()}}
+catch(err){toast('Something went wrong. Check your internet.')}finally{busy=false}});
+document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('[role=button][data-a]')){e.preventDefault();e.target.click()}});
+document.addEventListener('input',e=>{const k=e.target.dataset.in;if(!k)return;ui[k]=e.target.value;if(k==='date'){ae=null;e.target.blur();render()}});
+var ae;S=blank();S.loading=true;if(RECOVERY)ui.recovery=true;if(OWNER_LINK)ui.lrole='owner';
+if(cfgOk())sb.auth.onAuthStateChange(ev=>{if(ev==='PASSWORD_RECOVERY'){ui.recovery=true;render()}});
+if(/error_code=otp_expired|error_description=/.test(location.hash)){setTimeout(()=>toast('That reset link has expired. Please request a new one.'),500);try{history.replaceState(null,'',location.pathname)}catch(e){}}
+render();
+(async()=>{if(cfgOk())await boot();S.loading=false;sync();render()})();
+setInterval(render,30000);
+setInterval(async()=>{const t=document.activeElement&&document.activeElement.tagName;if(S.user&&!ui.view&&!/INPUT|TEXTAREA|SELECT/.test(t||'')&&!busy){await boot();render()}},60000);
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script></body></html>
