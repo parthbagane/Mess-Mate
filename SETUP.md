@@ -59,3 +59,23 @@ The Package ID in assetlinks.json must match the APK. If you regenerate the pack
 4. SQL Editor: run otp_setup.sql once.
 5. Redeploy this folder on Netlify.
 Students sign up, get a code by email, type it into the app, and are logged in. If they close the app first, logging in asks for the code again and sends a new one.
+
+
+---
+
+## Payments, owner search, closing date (new)
+
+**One extra setup step:** in Supabase open **SQL Editor > New query**, paste the whole of `payments_setup.sql`, and press **Run**. It is safe to run twice and deletes nothing. Until you do, the app works as before and the new payment sections show a "not switched on yet" notice.
+
+### What the owner can do
+- **Attendance tab:** search by name, student ID, roll number or room number, switch Lunch/Dinner, mark Present/Absent from the results.
+- **Payments tab:** review proofs, view the screenshot, Approve (after ticking that you saw the money in your bank/UPI app) or Reject (reason required). Flags possible duplicate transaction IDs. Audit trail at the bottom.
+- **Settings tab:** UPI ID, phone, name, bank details, instructions, payment modes, QR image, and the **mess closing date** + announcement.
+- Add roll numbers in **Students > a student > Edit student**.
+
+### Limits to know about
+- This app uses **Supabase**, not localStorage, so data is shared between phones and survives refresh. Row-level security means students cannot approve payments, change owner settings or see other students' screenshots; approve/reject only run through owner-only database functions.
+- Screenshots are compressed in the phone and stored in a private Supabase bucket (free tier: 1 GB total). The QR image is stored in the settings row.
+- A screenshot is **not** proof of payment. Only payments the owner approves count. Fake screenshots are possible, so always check your bank/UPI app.
+- Breakfast was removed earlier at your request, so the switcher is Lunch/Dinner. The live app has no demo time controls.
+- Fee status: PAID when nothing is left, OVERDUE when unpaid after the 5th of the fee month, PARTIAL when something is paid, else PENDING.
