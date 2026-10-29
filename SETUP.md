@@ -79,3 +79,16 @@ Students sign up, get a code by email, type it into the app, and are logged in. 
 - A screenshot is **not** proof of payment. Only payments the owner approves count. Fake screenshots are possible, so always check your bank/UPI app.
 - Breakfast was removed earlier at your request, so the switcher is Lunch/Dinner. The live app has no demo time controls.
 - Fee status: PAID when nothing is left, OVERDUE when unpaid after the 5th of the fee month, PARTIAL when something is paid, else PENDING.
+
+
+---
+
+## Multi-day leave (new)
+
+Run `multiday_leave_setup.sql` once in Supabase (SQL Editor > New query > paste > Run). Until then the Leave tab shows "Not available yet" for this card; single-day leave works as before.
+
+On the **Leave** tab, "Leave for multiple days" lets a student choose:
+- **Until a date**: first and last leave day (up to 60 days).
+- **Until I'm back**: stays on leave every day until they tap **I'm back**.
+
+Rules: starting today works until 5:00 PM IST, later dates any time. Days that have not arrived yet are not counted until they come. "I'm back" (or "Cancel this leave" for upcoming leave) makes them eligible for attendance from today. The owner sees "until they return" / "until <date>" on the Today screen, and the owner still marks attendance as usual.
