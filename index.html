@@ -75,6 +75,23 @@ select:focus,textarea:focus,input:focus{outline:none;border-color:var(--primary)
 label.opt{display:flex;gap:10px;align-items:center;padding:12px 4px;border-bottom:1px solid var(--border)}
 .gauge{text-align:center}.gauge svg{width:100%;max-width:230px;display:block;margin:0 auto}
 .clickable{cursor:pointer}
+.sb{position:relative}.sb .ic{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--text-secondary);pointer-events:none}
+.sb input{padding-left:44px;min-height:54px;font-size:17px;border:1.5px solid var(--primary)}
+.seg.s4{grid-template-columns:repeat(4,1fr);gap:4px;padding:4px}.seg.s4 button{font-size:13px;min-height:44px;padding:0 2px}
+.banner.warn{background:var(--warning-bg);color:var(--warning)}.banner.err{background:var(--danger-bg);color:var(--danger-text)}
+.bdg{position:absolute;top:-4px;right:-2px;min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:var(--danger);color:#fff;font-size:11px;font-weight:700;line-height:18px;text-align:center}
+.nav .pill{position:relative}
+.qrbox{display:flex;align-items:center;justify-content:center;width:100%;max-width:240px;aspect-ratio:1;margin:0 auto 12px;border:2px dashed var(--border);border-radius:16px;background:var(--background);color:var(--text-secondary);text-align:center;padding:12px;font-size:14px;overflow:hidden}
+.qrbox img{width:100%;height:100%;object-fit:contain;background:#fff;display:block}
+.pvimg{display:block;width:100%;max-height:360px;object-fit:contain;border-radius:14px;border:1px solid var(--border);background:var(--background);margin-top:12px}
+.close{background:var(--primary-light);border-color:#BBF7D0}
+.close .big{font-size:34px;line-height:1.15;font-weight:800;color:var(--primary);margin:6px 0}
+.note{background:#fff;border-radius:14px;padding:12px 14px;margin-top:12px;font-size:15px;border:1px solid #BBF7D0;white-space:pre-wrap}
+.pre{white-space:pre-wrap;overflow-wrap:anywhere}
+.rej{background:var(--danger-bg);color:var(--danger-text);border-radius:14px;padding:12px 14px;margin-top:12px;font-size:15px;font-weight:600}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2)}
+.btn.bad{background:var(--danger-bg);border-color:var(--danger-bg);color:var(--danger-text)}
+.fileb{position:relative;overflow:hidden}.fileb input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;font-size:0}
 /* nav */
 .nav{position:fixed;left:0;right:0;bottom:0;z-index:5;background:#fff;border-top:1px solid var(--border);padding-bottom:env(safe-area-inset-bottom,0px)}
 .nav:empty{display:none}
@@ -107,11 +124,12 @@ let OFF=0;
 function now(){return new Date(Date.now()+OFF+19800000+new Date().getTimezoneOffset()*60000)}
 const mins=()=>{const d=now();return d.getHours()*60+d.getMinutes()};
 const today=()=>key(now());
-const blank=()=>({students:[],att:{},pay:{},leaves:[],user:null,student:null,loading:false});
+const blank=()=>({students:[],att:{},pay:{},leaves:[],user:null,student:null,loading:false,cfg:{},subs:[],audit:[],pg:false,ext:false});
 const email=m=>m+'@messmate.app';
 function save(){}
 async function all(q){let out=[],i=0;for(;;){const{data,error}=await q().range(i,i+999);if(error)throw error;out=out.concat(data);if(data.length<1000)break;i+=1000}return out}
-const mapSt=p=>({id:p.student_code,uid:p.id,name:p.name,room:p.room||'Not assigned',phone:p.mobile,location:p.location||'',fee:p.monthly_fee});
+const mapSt=p=>({id:p.student_code,uid:p.id,name:p.name,room:p.room||'Not assigned',roll:p.roll_no||'',phone:p.mobile,location:p.location||'',fee:p.monthly_fee});
+const mapSub=(r,c)=>({id:r.id,sid:c,fm:r.fee_month,amt:r.amount,pd:r.paid_on,ref:r.txn_ref,note:r.note||'',path:r.proof_path,status:r.status,reason:r.reject_reason||'',at:r.submitted_at,vat:r.verified_at});
 const mapLv=(r,c)=>({id:r.id,sid:c,date:r.date,reason:r.reason,note:r.note||'',appliedAt:r.applied_at,status:'APPLIED'});
 async function loadData(){const{data:{session}}=await sb.auth.getSession();const n=blank();if(!session){S=n;return}
 try{const t=await sb.rpc('server_now');if(t.data)OFF=new Date(t.data).getTime()-Date.now()}catch(e){}
@@ -124,7 +142,13 @@ const P=await all(()=>sb.from('payments').select('*').order('paid_on').order('id
 n.students=profs.map(mapSt);const code={};profs.forEach(p=>code[p.id]=p.student_code);
 A.forEach(r=>{const c=code[r.student_id];if(!c)return;n.att[c]=n.att[c]||{};n.att[c][r.date]=n.att[c][r.date]||{};n.att[c][r.date][r.meal]=r.status});
 L.forEach(r=>{const c=code[r.student_id];if(c)n.leaves.push(mapLv(r,c))});
-P.forEach(r=>{const c=code[r.student_id];if(!c)return;(n.pay[c]=n.pay[c]||[]).push({d:r.paid_on,amt:r.amount,mode:r.mode})});
+P.forEach(r=>{const c=code[r.student_id];if(!c)return;(n.pay[c]=n.pay[c]||[]).push({d:r.paid_on,amt:r.amount,mode:r.mode,month:r.fee_month||'',sub:r.submission_id||null})});
+n.ext='roll_no' in me;
+/* new payment tables are optional: if payments_setup.sql was not run yet, the rest of the app still works */
+try{const c=await sb.from('mess_settings').select('*').eq('id',1).maybeSingle();if(c.error)throw c.error;n.cfg=c.data||{};
+const SB=await all(()=>sb.from('payment_submissions').select('*').order('id',{ascending:false}));SB.forEach(r=>{const k=code[r.student_id];if(k)n.subs.push(mapSub(r,k))});
+if(owner){const au=await sb.from('payment_audit').select('*').order('id',{ascending:false}).limit(40);if(!au.error)n.audit=au.data||[]}
+n.pg=true}catch(e){n.pg=false;n.cfg={};n.subs=[];n.audit=[]}
 n.user={role:me.role,id:owner?'owner':me.student_code};S=n;sync()}
 async function boot(){try{await loadData()}catch(e){S=blank();toast('Could not load data. Check your internet.')}}
 const okMail=e=>/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e);
@@ -161,23 +185,94 @@ await boot();ui.sn=ui.se=ui.sm=ui.sl=ui.sp='';ui.mode='login';tab='home';render(
 async function ownerMark(code,m,v){if(!S.user||S.user.role!=='owner')return;const st=S.students.find(x=>x.id===code);if(!st)return;const k=today();
 if(withStu(st,()=>leaveOn(k)))return toast('Student is on leave today');
 const{error}=await sb.from('attendance').upsert({student_id:st.uid,date:k,meal:m,status:v},{onConflict:'student_id,date,meal'});if(error)return toast('Could not save. Try again.');
-S.att[code]=S.att[code]||{};S.att[code][k]=S.att[code][k]||{};S.att[code][k][m]=v;render()}
+S.att[code]=S.att[code]||{};S.att[code][k]=S.att[code][k]||{};S.att[code][k][m]=v;refreshAtt()}
 async function openStudent(code){const st=S.students.find(x=>x.id===code);if(!st)return;
 try{const A=await all(()=>sb.from('attendance').select('*').eq('student_id',st.uid).order('id')),L=await all(()=>sb.from('leaves').select('*').eq('student_id',st.uid).order('id'));
 S.att[code]={};A.forEach(r=>{S.att[code][r.date]=S.att[code][r.date]||{};S.att[code][r.date][r.meal]=r.status});
 S.leaves=S.leaves.filter(l=>l.sid!==code).concat(L.map(r=>mapLv(r,code)))}catch(e){return toast('Could not load student')}
-ui.view=code;ui.eroom=st.room;ui.efee=String(st.fee);ui.pamt='';ui.pmode='UPI';render();scrollTo(0,0)}
+ui.view=code;ui.eroll=st.roll;ui.eroom=st.room;ui.efee=String(st.fee);ui.pamt='';ui.pmode='UPI';render();scrollTo(0,0)}
 async function recordPayment(){const st=S.students.find(x=>x.id===ui.view),amt=parseInt(ui.pamt,10);if(!st)return;if(!(amt>0))return toast('Enter a valid amount');
-const{data,error}=await sb.from('payments').insert({student_id:st.uid,amount:amt,mode:ui.pmode||'UPI'}).select().single();if(error)return toast('Could not save payment');
-(S.pay[st.id]=S.pay[st.id]||[]).push({d:data.paid_on,amt,mode:data.mode});ui.pamt='';toast('Payment recorded')}
+const row={student_id:st.uid,amount:amt,mode:ui.pmode||'UPI'};if(S.pg)row.fee_month=curMonth();
+const{data,error}=await sb.from('payments').insert(row).select().single();if(error)return toast('Could not save payment');
+(S.pay[st.id]=S.pay[st.id]||[]).push({d:data.paid_on,amt,mode:data.mode,month:data.fee_month||'',sub:null});ui.pamt='';toast('Payment recorded')}
 async function saveStudent(){const st=S.students.find(x=>x.id===ui.view),fee=parseInt(ui.efee,10),room=(ui.eroom||'').trim();if(!st)return;if(!(fee>=0)||!room)return toast('Enter room and fee');
-const{error}=await sb.from('profiles').update({room,monthly_fee:fee}).eq('id',st.uid);if(error)return toast('Could not save');st.room=room;st.fee=fee;toast('Saved')}
-function exportCsv(){const rows=[['Name','Student ID','Mobile','Room','Present days','Absent days','Leave days','Total meals','Fee','Paid this month','Remaining']];
-S.students.forEach(st=>withStu(st,()=>{const s=summary(),paid=PY().filter(p=>p.d.slice(0,7)===today().slice(0,7)).reduce((a,p)=>a+p.amt,0);rows.push([st.name,st.id,st.phone,st.room,s.P,s.A,s.V,s.L+s.D,st.fee,paid,Math.max(0,st.fee-paid)])}));
+const upd={room,monthly_fee:fee},roll=(ui.eroll||'').trim();if(S.ext)upd.roll_no=roll||null;
+const{error}=await sb.from('profiles').update(upd).eq('id',st.uid);if(error)return toast('Could not save');st.room=room;st.fee=fee;if(S.ext)st.roll=roll;toast('Saved')}
+function exportCsv(){const rows=[['Name','Student ID','Mobile','Room','Present days','Absent days','Leave days','Total meals','Fee','Paid this month','Remaining','Roll no','Fee status']];
+S.students.forEach(st=>withStu(st,()=>{const s=summary(),fi=feeInfo(curMonth());rows.push([st.name,st.id,st.phone,st.room,s.P,s.A,s.V,s.L+s.D,st.fee,fi.paid,fi.rem,st.roll,fi.st])}));
 const csv=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
 const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='messmate-'+today().slice(0,7)+'.csv';a.click()}
-const dueDate=()=>{const n=now(),d=new Date(n.getFullYear(),n.getMonth()+(n.getDate()>5?1:0),5);return fdy(key(d))};
+const MONF=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const fdl=k=>{const[y,m,d]=k.split('-');return +d+' '+MONF[m-1]+' '+y};
+const ist=iso=>new Date(new Date(iso).getTime()+19800000);
+const fdt=iso=>{const d=ist(iso),h=d.getUTCHours();return d.getUTCDate()+' '+MON[d.getUTCMonth()]+' '+d.getUTCFullYear()+', '+(h%12||12)+':'+pad(d.getUTCMinutes())+' '+(h<12?'AM':'PM')};
+const monthLabel=m=>MONF[+m.slice(5)-1]+' '+m.slice(0,4);
+const curMonth=()=>today().slice(0,7);
+const dueFor=m=>m+'-05';
+const paidFor=m=>PY().filter(p=>(p.month||p.d.slice(0,7))===m).reduce((a,p)=>a+p.amt,0);
+/* fee status is calculated ONLY from verified payments (rows in `payments`); pending/rejected submissions never count */
+function feeInfo(m){const fee=S.student.fee,paid=paidFor(m),rem=Math.max(0,fee-paid),st=rem===0?'PAID':today()>dueFor(m)?'OVERDUE':paid>0?'PARTIAL':'PENDING';return{fee,paid,rem,st,due:dueFor(m)}}
+const FC={PAID:['','check'],PARTIAL:['y','clock'],PENDING:['n','clock'],OVERDUE:['r','alert']};
+const feeChip=s=>`<span class="chip ${FC[s][0]}">${ic(FC[s][1],16)}${s}</span>`;
+function monthOpts(){const n=now(),o=[];for(let i=-5;i<=1;i++){const d=new Date(n.getFullYear(),n.getMonth()+i,1);o.push(d.getFullYear()+'-'+pad(d.getMonth()+1))}return o}
+function closing(){const d=(S.cfg||{}).closing_date;if(!d)return{set:false};const a=d.split('-').map(Number),b=today().split('-').map(Number);
+return{set:true,d,diff:Math.round((Date.UTC(a[0],a[1]-1,a[2])-Date.UTC(b[0],b[1]-1,b[2]))/864e5),note:(S.cfg.closing_note||'').trim()}}
+const URLS={};
+async function proofUrl(path){if(URLS[path])return URLS[path];const{data,error}=await sb.storage.from('payment-proofs').createSignedUrl(path,600);if(error||!data)throw error||new Error('no url');URLS[path]=data.signedUrl;setTimeout(()=>{delete URLS[path]},540000);return URLS[path]}
+const OKT=['image/jpeg','image/png','image/webp'];
+function checkImg(f){if(!f)return'Please choose a screenshot first';const okType=f.type?OKT.includes(f.type):/\.(jpe?g|png|webp)$/i.test(f.name);if(!okType)return'Only JPG, JPEG, PNG or WEBP images are allowed';if(f.size>5*1024*1024)return'Image is too large. The maximum size is 5 MB';if(f.size<100)return'This image looks empty. Please choose another one';return''}
+function loadImg(f){return new Promise((res,rej)=>{const u=URL.createObjectURL(f),i=new Image();i.onload=()=>{URL.revokeObjectURL(u);res(i)};i.onerror=()=>{URL.revokeObjectURL(u);rej(new Error('bad image'))};i.src=u})}
+async function shrink(f,max,type,q){const i=await loadImg(f),r=Math.min(1,max/Math.max(i.width,i.height)),c=document.createElement('canvas');c.width=Math.max(1,Math.round(i.width*r));c.height=Math.max(1,Math.round(i.height*r));const x=c.getContext('2d');if(type==='image/jpeg'){x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height)}x.drawImage(i,0,0,c.width,c.height);return new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(new Error('encode')),type,q))}
+const toDataUrl=b=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=()=>rej(r.error);r.readAsDataURL(b)});
+async function copyText(t){try{await navigator.clipboard.writeText(t);return true}catch(e){try{const a=document.createElement('textarea');a.value=t;a.style.position='fixed';a.style.opacity='0';document.body.appendChild(a);a.select();const ok=document.execCommand('copy');a.remove();return ok}catch(e2){return false}}}
+const NEEDSQL='Payment features are not switched on yet. The owner needs to run payments_setup.sql in Supabase (see README).';
 function toast(m){toastMsg=m;render();setTimeout(()=>{toastMsg='';render()},3500)}
+
+/* ===== payments: student side ===== */
+async function submitProof(){if(ui.psub)return;const st=S.student;if(!S.pg)return toast(NEEDSQL);
+const amt=Number(ui.pf_amt),ref=(ui.pf_ref||'').trim().toUpperCase().replace(/\s+/g,''),pd=ui.pf_date||today(),fm=ui.pf_month||curMonth();
+const e=checkImg(ui.pf_file);if(e){ui.pf_err=e;render();return toast(e)}
+if(!Number.isInteger(amt)||amt<=0)return toast('Enter the amount you paid in whole rupees');if(amt>1000000)return toast('That amount looks too large');
+if(pd>today())return toast('The payment date cannot be in the future');
+if(!/^[A-Z0-9_-]{6,35}$/.test(ref))return toast('Enter the UPI transaction/reference ID (6 to 35 letters or numbers)');
+if(S.subs.some(x=>x.sid===st.id&&x.status!=='REJECTED'&&x.ref.toUpperCase()===ref))return toast('You have already submitted this transaction ID');
+ui.psub=true;ui.pf_err='';render();
+let path='';
+try{const blob=await shrink(ui.pf_file,1600,'image/jpeg',.82);path=st.uid+'/'+Date.now()+'-'+Math.random().toString(36).slice(2,8)+'.jpg';
+const up=await sb.storage.from('payment-proofs').upload(path,blob,{contentType:'image/jpeg'});if(up.error)throw up.error;
+const{data,error}=await sb.from('payment_submissions').insert({student_id:st.uid,fee_month:fm,amount:amt,paid_on:pd,txn_ref:ref,note:(ui.pf_note||'').trim()||null,proof_path:path}).select().single();
+if(error){try{await sb.storage.from('payment-proofs').remove([path])}catch(x){}ui.psub=false;return toast(error.code==='23505'?'You have already submitted this transaction ID':'Could not submit. Please try again.')}
+S.subs.unshift(mapSub(data,st.id));ui.pf_file=null;if(ui.pf_pre)URL.revokeObjectURL(ui.pf_pre);ui.pf_pre='';ui.pf_amt=ui.pf_ref=ui.pf_note='';ui.pf_date='';ui.pf_done=true;ui.psub=false;toast('Payment proof submitted');
+setTimeout(()=>{const el=document.getElementById('proofform');if(el)el.scrollIntoView({behavior:'smooth',block:'start'})},50)}
+catch(err){ui.psub=false;toast('Could not upload the screenshot. Check your internet and try again.')}}
+async function copyUpi(){const u=(S.cfg||{}).upi_id;if(!u)return;toast(await copyText(u)?'UPI ID copied':'Could not copy. Please copy it manually.')}
+async function viewProof(path){ui.pv=ui.pv||{};if(ui.pv[path]){ui.pv[path]=false;render();return}
+try{await proofUrl(path);ui.pv[path]=true;render()}catch(e){toast('Could not load the screenshot')}}
+/* ===== payments: owner side ===== */
+const stuByCode=c=>S.students.find(x=>x.id===c)||{name:c,id:c,room:'',roll:''};
+function dupInfo(x){const r=x.ref.toLowerCase(),o=S.subs.filter(y=>y.id!==x.id&&y.ref.toLowerCase()===r),ap=o.find(y=>y.status==='APPROVED');
+if(x.status!=='APPROVED'&&ap)return{hard:true,msg:'Possible duplicate: this transaction ID was already approved for '+stuByCode(ap.sid).name+' (₹'+ap.amt+', '+monthLabel(ap.fm)+'). It cannot be counted twice.'};
+const pe=o.find(y=>y.status!=='REJECTED');if(pe)return{hard:false,msg:'Possible duplicate: the same transaction ID also appears in another '+pe.status.toLowerCase()+' submission by '+stuByCode(pe.sid).name+'. Check your bank app carefully.'};return null}
+const SERR=m=>/DUPLICATE_REF/.test(m)?'This transaction ID is already used for an approved payment. It cannot be counted twice.':/ALREADY_DONE/.test(m)?'This submission was already handled. Refreshing.':/REASON_REQUIRED/.test(m)?'Please write a rejection reason':null;
+async function decide(kind,id){const x=S.subs.find(y=>y.id===id);if(!x||!S.user||S.user.role!=='owner')return;
+if(kind==='A'&&!ui.apvok)return toast('Tick the box to confirm you saw the money in your bank/UPI app');
+const reason=(ui.rej_reason||'').trim();if(kind==='R'&&reason.length<3)return toast('Please write a rejection reason (at least 3 letters)');
+const{error}=kind==='A'?await sb.rpc('approve_payment',{p_id:id}):await sb.rpc('reject_payment',{p_id:id,p_reason:reason});
+if(error){const m=SERR(error.message||'');await boot();ui.apv=ui.rej=null;render();return toast(m||'Could not save. Try again.')}
+const n=stuByCode(x.sid).name;ui.apv=ui.rej=null;ui.apvok=false;ui.rej_reason='';await boot();render();
+toast(kind==='A'?'Payment approved. ₹'+x.amt+' added to '+n+"'s paid total.":'Payment rejected. '+n+' will see your reason.')}
+/* ===== owner settings ===== */
+function initCfg(){const c=S.cfg||{};ui.cfg_name=c.owner_name||'';ui.cfg_upi=c.upi_id||'';ui.cfg_phone=c.pay_phone||'';ui.cfg_bank=c.bank_details||'';ui.cfg_instr=c.instructions||'';ui.cfg_modes=(c.modes||['UPI','Cash']).slice();ui.cfg_qr=c.qr_data||'';ui.cfg_close=c.closing_date||'';ui.cfg_note=c.closing_note||'';ui.cfg_init=true}
+async function savePay(){if(!S.pg)return toast(NEEDSQL);const upi=(ui.cfg_upi||'').trim(),ph=(ui.cfg_phone||'').trim();
+if(upi&&!/^[A-Za-z0-9._-]{2,}@[A-Za-z][A-Za-z0-9.-]+$/.test(upi))return toast('The UPI ID looks wrong. It should look like name@bank');
+if(ph&&!/^\d{10}$/.test(ph))return toast('Enter a 10-digit phone number');
+const row={id:1,owner_name:(ui.cfg_name||'').trim()||null,upi_id:upi||null,pay_phone:ph||null,bank_details:(ui.cfg_bank||'').trim()||null,instructions:(ui.cfg_instr||'').trim()||null,modes:ui.cfg_modes,qr_data:ui.cfg_qr||null,updated_at:new Date().toISOString()};
+const{error}=await sb.from('mess_settings').upsert(row,{onConflict:'id'});if(error)return toast('Could not save. Only the owner account can change these.');
+S.cfg=Object.assign({},S.cfg,row);toast('Payment details saved. Students will see them now.')}
+async function saveClose(clear){if(!S.pg)return toast(NEEDSQL);const d=clear?'':ui.cfg_close;if(!clear&&!d)return toast('Choose the last working day first');
+const row={id:1,closing_date:d||null,closing_note:clear?null:(ui.cfg_note||'').trim()||null,updated_at:new Date().toISOString()};
+const{error}=await sb.from('mess_settings').upsert(row,{onConflict:'id'});if(error)return toast('Could not save. Only the owner account can change this.');
+S.cfg=Object.assign({},S.cfg,row);if(clear){ui.cfg_close='';ui.cfg_note=''}toast(clear?'Closing date removed':'Closing date saved. Students will see it on their Home page.')}
 const myLeaves=()=>S.leaves.filter(l=>l.sid===S.student.id);
 const leaveOn=k=>myLeaves().find(l=>l.date===k);
 const fin=()=>mins()>=1320;
@@ -212,6 +307,14 @@ eye:'<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy=
 eyeoff:'<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><path d="m2 2 20 20"/>',
 download:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><path d="M12 15V3"/>',
 back:'<path d="m15 18-6-6 6-6"/>',
+search:'<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+upload:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><path d="M12 3v12"/>',
+copy:'<rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+alert:'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4M12 17h.01"/>',
+sliders:'<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
+qr:'<rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3M21 21v.01M12 7v3a2 2 0 0 1-2 2H7M3 12h.01M12 3h.01M12 16v.01M16 12h1M21 12v.01M12 21v-1"/>',
+receipt:'<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8M12 17.5v-11"/>',
+phone:'<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/>',
 logout:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><path d="M21 12H9"/>'};
 const ic=(n,sz)=>`<svg class="ic" width="${sz||20}" height="${sz||20}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${IC[n]}</svg>`;
 const SM={P:['','check','Present'],A:['r','x','Absent'],L:['i','cal','Leave'],N:['n','circle','Not marked']};
@@ -239,7 +342,15 @@ const cards=MEALS.map(x=>{const v=eff(t,x[0]),closed=ls!=='NOT_APPLIED'&&!l;retu
 const s=summary();
 return`<div class="hd"><h1>MessMate</h1><p>Welcome, ${esc(S.student.name)}</p><p class="dt">${now().toDateString()} · ${ft(now())}</p></div>${ring()}${banner}${cards}${leaveCard()}
 <div class="card"><h2>Monthly Summary</h2><div class="stats">${[['Lunch',s.L],['Dinner',s.D],['Present Days',s.P],['Absent Days',s.A],['Leave Days',s.V],['Total Days',s.P+s.A+s.V]].map(a=>`<div class="stat"><b>${a[1]}</b><span>${a[0]}</span></div>`).join('')}</div>
-<div class="kv" style="margin-top:16px"><span>Total Meals</span><b>${s.L+s.D}</b></div><div class="kv"><span>Plan Expiry${expiry().sub}</span><b>${expiry().txt}</b></div></div>`}
+<div class="kv" style="margin-top:16px"><span>Total Meals</span><b>${s.L+s.D}</b></div><div class="kv"><span>Plan Expiry${expiry().sub}</span><b>${expiry().txt}</b></div></div>${closingCard()}`}
+function closingCard(){const c=closing();let head,big,msg;
+if(!c.set){head='';big='Closing date not announced yet';msg='Your mess owner has not set a last working day yet. Check back later.'}
+else{head=`<div class="kv" style="border:0;padding:0 0 4px"><span>Last day of mess</span><b>${fdl(c.d)}</b></div>`;
+if(c.diff>1){big=c.diff+' days left';msg='Please plan your meals accordingly. The mess will operate until the date mentioned above.'}
+else if(c.diff===1){big='1 day left';msg='Tomorrow is the last day of the mess. Please plan your meals accordingly.'}
+else if(c.diff===0){big='Mess closes today';msg='Today is the last working day of the mess.'}
+else{big='Mess period ended';msg='The mess closed on '+fdl(c.d)+'.'}}
+return`<div class="card close" id="closing"><h2>${ic('cal',22)}Mess Closing Date</h2>${head}<div class="big">${big}</div><p class="m" style="margin:0;color:var(--text-primary)">${msg}</p>${c.set&&c.note?`<div class="note"><b>Notice from your mess owner</b><br>${esc(c.note)}</div>`:''}</div>`}
 function leaveCard(){const ls=leaveState(),l=leaveOn(today()),lbl={NOT_APPLIED:'Not applied',APPLIED:'Applied',CLOSED:'Closed'}[ls];let body;
 if(l)body=`<span class="chip i">${ic('cal',16)}Leave Applied</span><div style="margin-top:12px"><div class="kv"><span>Date</span><b>${fdy(l.date)}</b></div><div class="kv"><span>Reason</span><b>${esc(l.reason)}</b></div>${l.note?`<div class="kv"><span>Note</span><b>${esc(l.note)}</b></div>`:''}<div class="kv"><span>Applied at</span><b>${ft(l.appliedAt)}</b></div><div class="kv"><span>Status</span><b>${l.status}</b></div></div>`;
 else if(ls==='CLOSED')body=`<span class="chip n">${ic('lock',16)}Applications Closed</span><p style="margin:12px 0 4px;font-weight:600">Leave application closed for today</p><p class="m" style="margin:0 0 16px">Closing time: 5:00 PM</p><button class="btn pri" disabled>${ic('lock',18)}Applications Closed</button>`;
@@ -249,11 +360,56 @@ function meals(){const t=today();if(!ui.date)ui.date=t;const ks=[...new Set([...
 return`${hd('Meal History','Pick a date to see details')}<div class="card"><h2>Select date</h2>${F('Date',`<input type="date" value="${ui.date}" max="${t}" data-in="date">`)}${dayCard(ui.date,true)}</div><h2 class="sec">Previous days</h2>${ks.map(k=>dayCard(k)).join('')}`}
 function leave(){const L=myLeaves().slice().sort((a,b)=>b.date.localeCompare(a.date));
 return`${hd('Leave','Apply and review leave')}${leaveCard()}<h2 class="sec">Leave History</h2>${L.length?L.map(l=>`<div class="card"><div class="row"><b>${fdy(l.date)}</b><span class="chip i">${ic('cal',16)}${l.status==='APPLIED'?'Applied':esc(l.status)}</span></div><p class="m" style="margin:8px 0 0">Reason: ${esc(l.reason)}${l.note?'<br>Note: '+esc(l.note):''}<br>Applied at: ${ft(l.appliedAt)}</p></div>`).join(''):'<div class="card m">No leave applications yet.</div>'}`}
-function fees(){const f=S.student.fee,paid=PY().filter(p=>p.d.slice(0,7)===today().slice(0,7)).reduce((a,p)=>a+p.amt,0);
-return`${hd('Fees','Mess fee details')}<div class="card"><div class="kv"><span>Monthly Fee</span><b>₹${f}</b></div><div class="kv"><span>Paid this month</span><b style="color:var(--success)">₹${paid}</b></div><div class="kv"><span>Remaining</span><b style="color:var(--danger-text)">₹${Math.max(0,f-paid)}</b></div><div class="kv"><span>Due Date</span><b>${dueDate()}</b></div><div class="kv"><span>Payment Mode</span><b>UPI</b></div><div class="kv"><span>Plan Expiry${expiry().sub}</span><b>${expiry().txt}</b></div></div>
-<h2 class="sec">Payment History</h2>${PY().slice().reverse().map(p=>`<div class="card row"><div><b>₹${p.amt}</b><div class="m">${fdy(p.d)}</div></div><span class="chip">${ic('check',16)}${esc(p.mode)} · Paid</span></div>`).join('')}`}
+function payCard(fi,m){const c=S.cfg||{},ok=!!c.upi_id,modes=(c.modes&&c.modes.length?c.modes:['UPI','Cash']).join(', ');
+const name=c.owner_name||'Mess Owner',upi=c.upi_id||'demo.owner@upi',phone=c.pay_phone||'Not provided';
+const upiLink=ok?'upi://pay?pa='+encodeURIComponent(c.upi_id)+'&pn='+encodeURIComponent(name)+(fi.rem>0?'&am='+fi.rem+'.00':'')+'&cu=INR&tn='+encodeURIComponent('Mess fee '+monthLabel(m)):'';
+const qr=c.qr_data?`<div class="qrbox"><img src="${c.qr_data}" alt="Mess owner UPI QR code"></div>`:`<div class="qrbox">${ic('qr',40)}<span style="margin-left:8px">DEMO QR placeholder.<br>Owner has not uploaded a QR code yet.</span></div>`;
+const ext=c.qr_data&&(c.qr_data.slice(5,15)==='image/png;'?'png':c.qr_data.slice(5,16)==='image/jpeg;'?'jpg':'png');
+return`<div class="card" id="paybill"><h2>${ic('wallet',22)}Pay Your Mess Bill</h2>
+${ok?'':`<div class="banner warn">${ic('alert',20)}<span>DEMO details. Your mess owner has not entered real payment details yet. Do not pay to the details shown below.</span></div>`}
+<div class="kv"><span>Owner</span><b>${esc(name)}${c.owner_name?'':' (demo)'}</b></div>
+<div class="kv"><span>UPI ID</span><b>${esc(upi)}${ok?'':' (demo)'}</b></div>
+<div class="kv"><span>Phone</span><b>${esc(phone)}</b></div>
+${c.bank_details?`<div class="kv" style="align-items:flex-start"><span>Bank details</span><b class="pre" style="font-weight:500">${esc(c.bank_details)}</b></div>`:''}
+<div class="kv"><span>Accepted modes</span><b>${esc(modes)}</b></div>
+<div style="margin:16px 0 4px;text-align:center">${qr}</div>
+${ui.qrbig&&c.qr_data?`<img class="pvimg" src="${c.qr_data}" alt="Large QR code" style="background:#fff;max-height:none">`:''}
+<div class="stack" style="margin-top:12px">
+<button class="btn out" data-a="copyupi" ${ok?'':'disabled'}>${ic('copy',18)}Copy UPI ID</button>
+${c.qr_data?`<div class="two"><button class="btn out" data-a="qrview">${ic('qr',18)}${ui.qrbig?'Hide QR':'View QR'}</button><a class="btn out" href="${c.qr_data}" download="messmate-payment-qr.${ext}">${ic('download',18)}Download</a></div>`:''}
+${ok?`<a class="btn pri" href="${esc(upiLink)}">${ic('wallet',18)}Pay with UPI${fi.rem>0?' · ₹'+fi.rem:''}</a>`:`<button class="btn pri" disabled>${ic('wallet',18)}Pay with UPI</button>`}
+</div>
+<p class="m" style="margin:12px 0 0">Opening your UPI app does not confirm a payment. After you pay, upload your payment screenshot below so the owner can verify it.</p>
+${c.instructions?`<div class="note" style="background:var(--background);border-color:var(--border)"><b>Instructions from your mess owner</b><br>${esc(c.instructions)}</div>`:''}</div>`}
+function stBadge(x){return x.status==='APPROVED'?`<span class="chip">${ic('check',16)}Payment Approved</span>`:x.status==='REJECTED'?`<span class="chip r">${ic('x',16)}Payment Rejected</span>`:`<span class="chip y">${ic('clock',16)}PENDING VERIFICATION</span>`}
+function proofImg(path){return ui.pv&&ui.pv[path]&&URLS[path]?`<img class="pvimg" src="${URLS[path]}" alt="Payment screenshot"><a class="btn link" target="_blank" rel="noopener" href="${URLS[path]}">Open full size</a>`:''}
+function proofForm(){if(!S.pg)return`<div class="card"><h2>${ic('upload',22)}Submit Payment Proof</h2><p class="m" style="margin:0">Payment proof upload is not available yet. Please ask your mess owner.</p></div>`;
+const m=ui.pf_month||curMonth(),fi=feeInfo(m);
+return`<div class="card" id="proofform"><h2>${ic('upload',22)}Submit Payment Proof</h2>
+${ui.pf_done?`<div class="banner ok">${ic('check',20)}<span>Your payment proof has been submitted. Your mess owner will verify the payment.</span></div>`:''}
+<p class="m" style="margin:0 0 16px">Paid already? Upload your screenshot and details. Your payment is only counted after the owner approves it.</p>
+<div class="fl"><span>Payment screenshot (JPG, PNG or WEBP, up to 5 MB)</span><label class="btn out fileb">${ic('upload',18)}${ui.pf_file?'Change screenshot':'Choose from gallery'}<input type="file" accept="image/jpeg,image/png,image/webp" data-file="proof" aria-label="Choose payment screenshot"></label>
+${ui.pf_err?`<p class="m" style="color:var(--danger-text);font-weight:600;margin:8px 0 0">${esc(ui.pf_err)}</p>`:''}
+${ui.pf_file&&ui.pf_pre?`<img class="pvimg" src="${ui.pf_pre}" alt="Selected screenshot preview"><div class="row" style="margin-top:8px"><span class="m pre">${esc(ui.pf_file.name)} · ${Math.max(1,Math.round(ui.pf_file.size/1024))} KB</span><button class="btn sm link" data-a="pfclear">Remove</button></div>`:''}</div>
+${F('Fee month',`<select data-in="pf_month">${monthOpts().map(o=>`<option value="${o}" ${o===m?'selected':''}>${monthLabel(o)}</option>`).join('')}</select>`)}
+${F('Amount paid (₹)',`<input class="tx" type="number" inputmode="numeric" min="1" data-in="pf_amt" value="${esc(ui.pf_amt||'')}" placeholder="${fi.rem||fi.fee}">`)}
+${F('Payment date',`<input type="date" data-in="pf_date" value="${ui.pf_date||today()}" max="${today()}">`)}
+${F('UPI transaction / reference ID',`<input class="tx" data-in="pf_ref" value="${esc(ui.pf_ref||'')}" placeholder="e.g. 412345678901" autocomplete="off" autocapitalize="characters">`)}
+${F('Note (optional)',`<textarea rows="2" data-in="pf_note" placeholder="Anything the owner should know">${esc(ui.pf_note||'')}</textarea>`)}
+<button class="btn pri" data-a="psubmit" ${ui.psub?'disabled':''}>${ui.psub?'Submitting…':'Submit payment proof'}</button></div>`}
+function mySubs(){if(!S.pg)return'';const L=S.subs.filter(x=>x.sid===S.student.id);
+return`<h2 class="sec">My Payment Submissions</h2>${L.length?L.map(x=>`<div class="card"><div class="row" style="align-items:flex-start"><div><b>₹${x.amt}</b><div class="m">${monthLabel(x.fm)}</div></div>${stBadge(x)}</div>
+<div style="margin-top:12px"><div class="kv"><span>Payment date</span><b>${fdy(x.pd)}</b></div><div class="kv"><span>Transaction ID</span><b>${esc(x.ref)}</b></div><div class="kv"><span>Submitted</span><b>${fdt(x.at)}</b></div>${x.status==='APPROVED'&&x.vat?`<div class="kv"><span>Approved</span><b>${fdt(x.vat)}</b></div>`:''}${x.note?`<div class="kv"><span>Note</span><b>${esc(x.note)}</b></div>`:''}</div>
+${x.status==='PENDING'?`<p class="m" style="margin:12px 0 0">Your payment proof has been submitted. Your mess owner will verify the payment. It is not counted as paid until then.</p>`:''}
+${x.status==='REJECTED'?`<div class="rej">Reason: ${esc(x.reason||'No reason given')}</div>`:''}
+<div class="stack" style="margin-top:12px"><button class="btn out" data-a="pview" data-p="${esc(x.path)}">${ic('eye',18)}${ui.pv&&ui.pv[x.path]?'Hide screenshot':'View screenshot'}</button>${x.status==='REJECTED'?`<button class="btn pri" data-a="resub" data-id="${x.id}">${ic('upload',18)}Submit corrected proof</button>`:''}</div>${proofImg(x.path)}</div>`).join(''):'<div class="card m">You have not submitted any payment proof yet.</div>'}`}
+function fees(){const m=curMonth(),fi=feeInfo(m),pend=S.subs.filter(x=>x.sid===S.student.id&&x.status==='PENDING').reduce((a,x)=>a+x.amt,0);
+return`${hd('Fees','Mess fee details')}<div class="card"><div class="row"><h2 style="margin:0">${monthLabel(m)}</h2>${feeChip(fi.st)}</div><div style="margin-top:12px"><div class="kv"><span>Monthly Fee</span><b>₹${fi.fee}</b></div><div class="kv"><span>Paid this month</span><b style="color:var(--success)">₹${fi.paid}</b></div><div class="kv"><span>Remaining</span><b style="color:var(--danger-text)">₹${fi.rem}</b></div><div class="kv"><span>Due Date</span><b>${fdy(fi.due)}</b></div><div class="kv"><span>Payment Mode</span><b>${esc(((S.cfg||{}).modes||['UPI','Cash']).join(', '))}</b></div><div class="kv"><span>Plan Expiry${expiry().sub}</span><b>${expiry().txt}</b></div></div>
+<p class="m" style="margin:12px 0 0">Only payments approved by the mess owner count as paid.${pend?` ₹${pend} is waiting for verification and is not counted yet.`:''}</p></div>
+${payCard(fi,m)}${proofForm()}${mySubs()}
+<h2 class="sec">Payment History</h2>${PY().length?PY().slice().reverse().map(p=>`<div class="card row"><div><b>₹${p.amt}</b><div class="m">${fdy(p.d)}${p.month?' · for '+monthLabel(p.month):''}</div></div><span class="chip">${ic('check',16)}${esc(p.mode)} · Paid</span></div>`).join(''):'<div class="card m">No verified payments yet.</div>'}`}
 function profile(){const s=S.student;
-return`${hd('Profile',esc(s.name))}<div class="card">${[['Name',s.name],['Student ID',s.id],['Room Number',s.room],['Phone Number',s.phone],...(s.location?[['Location',s.location]]:[])].map(a=>`<div class="kv"><span>${a[0]}</span><b>${esc(a[1])}</b></div>`).join('')}</div>
+return`${hd('Profile',esc(s.name))}<div class="card">${[['Name',s.name],['Student ID',s.id],['Room Number',s.room],...(s.roll?[['Roll Number',s.roll]]:[]),['Phone Number',s.phone],...(s.location?[['Location',s.location]]:[])].map(a=>`<div class="kv"><span>${a[0]}</span><b>${esc(a[1])}</b></div>`).join('')}</div>
 <button class="btn out" data-a="logout">${ic('logout',18)}Log out</button>`}
 const AT=()=>S.att[S.student.id]||(S.att[S.student.id]={}),PY=()=>S.pay[S.student.id]||[];
 function sync(){S.student=S.user&&S.user.role==='student'?S.students.find(x=>x.id===S.user.id)||null:null;if(S.user&&S.user.role==='student'&&!S.student)S.user=null}
@@ -271,42 +427,113 @@ const seg=`<div class="seg" role="group" aria-label="Login type"><button type="b
 if(own)return`${hd('MessMate','Mess owner login')}<div class="card">${seg}<h2>Mess owner log in</h2>${F('Owner email',`<input class="tx" type="email" data-in="lid" value="${V('lid')}" placeholder="owner@example.com" autocomplete="email">`)}${pwf('Password','lpin','Your password','current-password')}<div class="stack"><button class="btn pri" data-a="login">Log in as owner</button><button class="btn link" data-a="smode" data-m="forgot">Forgot password?</button></div><p class="m" style="margin:16px 0 0;text-align:center">Owner accounts are set up by the app administrator. Students cannot sign up here.</p></div>`;
 return`${hd('MessMate','Student login')}<div class="card">${seg}<h2>Student log in</h2>${F('Email',`<input class="tx" type="email" data-in="lid" value="${V('lid')}" placeholder="you@example.com" autocomplete="email">`)}${pwf('Password','lpin','Your password','current-password')}<div class="stack"><button class="btn pri" data-a="login">Log in</button><button class="btn link" data-a="smode" data-m="forgot">Forgot password?</button><button class="btn out" data-a="smode" data-m="signup">New student? Sign up</button></div></div>`}
 /* ===== owner screens ===== */
-function oattend(){const R=S.students.map(st=>withStu(st,()=>({st,l:leaveOn(today()),e:MEALS.map(x=>eff(today(),x[0]))})));
-return`${hd('Mark Attendance',now().toDateString())}<p class="m" style="margin:0 2px 16px">Students cannot mark themselves. Tap to mark Present or Absent.</p>${R.map(r=>`<div class="card"><div class="row"><div style="min-width:0"><b>${esc(r.st.name)}</b><div class="m">${r.st.id} · Room ${esc(r.st.room)}</div></div>${r.l?`<span class="chip i">${ic('cal',16)}On leave</span>`:''}</div>${r.l?'':MEALS.map((x,i)=>`<div class="mrow"><span class="lab">${x[2]}</span><div class="bt"><button class="btn ${r.e[i]==='P'?'on-p':''}" aria-pressed="${r.e[i]==='P'}" data-a="omark" data-s="${r.st.id}" data-m="${x[0]}" data-v="P">Present</button><button class="btn ${r.e[i]==='A'?'on-a':''}" aria-pressed="${r.e[i]==='A'}" data-a="omark" data-s="${r.st.id}" data-m="${x[0]}" data-v="A">Absent</button></div></div>`).join('')}</div>`).join('')}`}
+const matchSt=(st,q)=>{q=(q||'').trim().toLowerCase();return!q||[st.name,st.id,st.roll,st.room].some(v=>v&&String(v).toLowerCase().includes(q))};
+function attData(){const m=ui.omeal||'L',t=today();return{m,R:S.students.map(st=>withStu(st,()=>({st,l:leaveOn(t),e:eff(t,m)})))}}
+function attCounts(D){const R=D.R;return[['Present',R.filter(r=>!r.l&&r.e==='P').length],['Absent',R.filter(r=>!r.l&&r.e==='A').length],['Not marked',R.filter(r=>!r.l&&!r.e).length],['On leave',R.filter(r=>r.l).length]].map(tile).join('')}
+function attList(D){const q=(ui.osq||'').trim(),L=D.R.filter(r=>matchSt(r.st,q));
+if(!S.students.length)return'<div class="card m">No students have registered yet.</div>';
+if(!L.length)return`<div class="card" role="status"><b>No student found</b><p class="m" style="margin:4px 0 0">Nothing matches “${esc(q)}”. Try a name, student ID, roll number or room number.</p></div>`;
+return(q?`<p class="m" style="margin:0 2px 12px">${L.length} of ${S.students.length} students</p>`:'')+L.map(r=>`<div class="card"><div class="row" style="align-items:flex-start"><div style="min-width:0"><b>${esc(r.st.name)}</b><div class="m">${esc(r.st.id)}${r.st.roll?' · Roll '+esc(r.st.roll):''} · Room ${esc(r.st.room)}</div></div>${r.l?`<span class="chip i">${ic('cal',16)}On leave</span>`:stChip(r.e)}</div>${r.l?'':`<div class="mrow"><div class="bt"><button class="btn ${r.e==='P'?'on-p':''}" aria-pressed="${r.e==='P'}" data-a="omark" data-s="${esc(r.st.id)}" data-m="${D.m}" data-v="P">Present</button><button class="btn ${r.e==='A'?'on-a':''}" aria-pressed="${r.e==='A'}" data-a="omark" data-s="${esc(r.st.id)}" data-m="${D.m}" data-v="A">Absent</button></div></div>`}</div>`).join('')}
+function refreshAtt(){const a=document.getElementById('sres'),c=document.getElementById('acnt');if(!a||!c)return render();const D=attData();a.innerHTML=attList(D);c.innerHTML=attCounts(D)}
+function oattend(){const D=attData(),nm=MEALS.find(x=>x[0]===D.m)[2];
+return`${hd('Mark Attendance',now().toDateString())}
+<div class="sb" style="margin-bottom:12px">${ic('search',20)}<input class="tx" type="search" inputmode="search" enterkeyhint="search" autocomplete="off" autocapitalize="off" spellcheck="false" data-in="osq" value="${esc(ui.osq||'')}" placeholder="Search student by name, ID or roll number" aria-label="Search students by name, ID, roll number or room number"></div>
+<div class="seg" role="group" aria-label="Meal">${MEALS.map(x=>`<button type="button" data-a="omeal" data-m="${x[0]}" aria-pressed="${D.m===x[0]}">${ic('utensils',18)}${x[2]}</button>`).join('')}</div>
+<div class="card"><h2 style="font-size:17px">${nm} today</h2><div class="stats" id="acnt">${attCounts(D)}</div></div>
+<p class="m" style="margin:0 2px 12px">Students cannot mark themselves. You can also search by room number.</p><div id="sres">${attList(D)}</div>`}
 function otoday(){const A=allStats(),on=A.filter(a=>a.l);
 return`<div class="hd"><h1>Owner Dashboard</h1><p class="dt">${now().toDateString()} · ${ft(now())}</p></div><div class="card"><div class="grid3">${[['Students',A.length],['On leave today',on.length],['Eating today',A.length-on.length]].map(tile).join('')}</div></div>
 <div class="card"><h2>${ic('cal',22)}On Leave Today</h2>${on.length?on.map(a=>`<div class="kv"><span style="display:block"><b>${esc(a.st.name)}</b><br><span class="m">Room ${esc(a.st.room)} · ${esc(a.l.reason)} · ${ft(a.l.appliedAt)}</span></span><span class="chip i">${ic('cal',16)}Leave</span></div>`).join(''):'<p class="m" style="margin:0">Nobody is on leave today.</p>'}</div><p class="m" style="margin:0 2px">Leave closes at 5:00 PM · attendance finalizes at 10:00 PM.</p>`}
-function odetail(st){return withStu(st,()=>{const m=summary(),a=summary(true),paid=PY().filter(p=>p.d.slice(0,7)===today().slice(0,7)).reduce((x,p)=>x+p.amt,0),fee=st.fee,L=myLeaves().slice().sort((x,y)=>y.date.localeCompare(x.date));
-return`<div class="hd"><button class="btn sm" data-a="oback">${ic('back',18)}Back</button><h1>${esc(st.name)}</h1><p>${st.id} · Room ${esc(st.room)}</p></div>
+function odetail(st){return withStu(st,()=>{const m=summary(),a=summary(true),fi=feeInfo(curMonth()),paid=fi.paid,fee=st.fee,L=myLeaves().slice().sort((x,y)=>y.date.localeCompare(x.date));
+return`<div class="hd"><button class="btn sm" data-a="oback">${ic('back',18)}Back</button><h1>${esc(st.name)}</h1><p>${esc(st.id)}${st.roll?' · Roll '+esc(st.roll):''} · Room ${esc(st.room)}</p></div>
 <div class="card"><div class="kv"><span>Mobile</span><b>${esc(st.phone)}</b></div>${st.location?`<div class="kv"><span>Location</span><b>${esc(st.location)}</b></div>`:''}</div>
 <div class="card"><h2>Attendance: this month</h2><div class="grid3">${[['Present',m.P],['Absent',m.A],['On Leave',m.V]].map(tile).join('')}</div><h2 style="margin-top:20px">All time</h2><div class="grid3">${[['Present',a.P],['Absent',a.A],['On Leave',a.V]].map(tile).join('')}</div></div>
-<div class="card"><h2>Fees</h2><div class="kv"><span>Monthly Fee</span><b>₹${fee}</b></div><div class="kv"><span>Paid this month</span><b style="color:var(--success)">₹${paid}</b></div><div class="kv"><span>Remaining</span><b style="color:var(--danger-text)">₹${Math.max(0,fee-paid)}</b></div></div>
-<div class="card"><h2>Edit student</h2>${F('Room number',`<input class="tx" data-in="eroom" value="${esc(ui.eroom||'')}" placeholder="e.g. B-203">`)}${F('Monthly fee (₹)',`<input class="tx" type="number" inputmode="numeric" data-in="efee" value="${esc(ui.efee||'')}" placeholder="e.g. 3000">`)}<button class="btn out" data-a="osave">Save</button></div>
+<div class="card"><div class="row"><h2 style="margin:0">Fees: ${monthLabel(curMonth())}</h2>${feeChip(fi.st)}</div><div style="margin-top:12px"><div class="kv"><span>Monthly Fee</span><b>₹${fee}</b></div><div class="kv"><span>Paid (verified)</span><b style="color:var(--success)">₹${paid}</b></div><div class="kv"><span>Remaining</span><b style="color:var(--danger-text)">₹${fi.rem}</b></div><div class="kv"><span>Due Date</span><b>${fdy(fi.due)}</b></div></div></div>
+<div class="card"><h2>Edit student</h2>${S.ext?F('Roll number (optional)',`<input class="tx" data-in="eroll" value="${esc(ui.eroll||'')}" placeholder="e.g. 21CS045">`):''}${F('Room number',`<input class="tx" data-in="eroom" value="${esc(ui.eroom||'')}" placeholder="e.g. B-203">`)}${F('Monthly fee (₹)',`<input class="tx" type="number" inputmode="numeric" data-in="efee" value="${esc(ui.efee||'')}" placeholder="e.g. 3000">`)}<button class="btn out" data-a="osave">Save</button></div>
 <div class="card"><h2>Record payment</h2>${F('Amount (₹)',`<input class="tx" type="number" inputmode="numeric" data-in="pamt" value="${esc(ui.pamt||'')}" placeholder="e.g. 1000">`)}${F('Payment mode',`<select data-in="pmode">${['UPI','Cash'].map(m=>`<option ${ui.pmode===m?'selected':''}>${m}</option>`).join('')}</select>`)}<button class="btn pri" data-a="opay">Save payment</button></div>
-<div class="card"><h2>Payment History</h2>${PY().length?PY().slice().reverse().map(p=>`<div class="kv"><span>${fdy(p.d)}</span><b>₹${p.amt} · ${esc(p.mode)}</b></div>`).join(''):'<p class="m" style="margin:0">No payments yet.</p>'}</div>
+<div class="card"><h2>Payment History</h2>${PY().length?PY().slice().reverse().map(p=>`<div class="kv"><span>${fdy(p.d)}${p.month?'<br><span class="m">for '+monthLabel(p.month)+'</span>':''}</span><b>₹${p.amt} · ${esc(p.mode)}</b></div>`).join(''):'<p class="m" style="margin:0">No payments yet.</p>'}</div>
 <div class="card"><h2>Leave History</h2>${L.length?L.map(l=>`<div class="kv"><span style="display:block">${fdy(l.date)}<br><span class="m">${esc(l.reason)}</span></span><span class="chip i">${ic('cal',16)}${l.status==='APPLIED'?'Applied':esc(l.status)}</span></div>`).join(''):'<p class="m" style="margin:0">No leaves.</p>'}</div>`})}
 function ostudents(){if(ui.view){const st=S.students.find(x=>x.id===ui.view);if(st)return odetail(st)}const A=allStats(),sm=f=>A.reduce((a,x)=>a+f(x),0);
 return`${hd('Students','Tap a student to view their account')}<button class="btn out" data-a="ocsv" style="margin-bottom:16px">${ic('download',18)}Download monthly report (CSV)</button><div class="card"><h2>All students this month</h2><div class="grid3">${[['Present Days',sm(x=>x.s.P)],['Absent Days',sm(x=>x.s.A)],['Leave Days',sm(x=>x.s.V)]].map(tile).join('')}</div><div class="kv" style="margin-top:16px"><span>Total Meals</span><b>${sm(x=>x.s.L+x.s.D)}</b></div></div>
-${A.map(x=>`<div class="card clickable" role="button" tabindex="0" data-a="oview" data-s="${x.st.id}" aria-label="View ${esc(x.st.name)}"><div class="row" style="align-items:flex-start"><div style="min-width:0;flex:1"><b>${esc(x.st.name)}</b><div class="m">${x.st.id} · Room ${esc(x.st.room)}${x.st.location?' · '+esc(x.st.location):''}</div></div>${dchip(x.td,'Today: ')}</div><div class="grid3" style="margin-top:12px">${[['Present',x.s.P],['Absent',x.s.A],['Leaves',x.s.V],['Lunch',x.s.L],['Dinner',x.s.D],['Meals',x.s.L+x.s.D]].map(tile).join('')}</div></div>`).join('')}`}
-function oprofile(){return`${hd('Profile','Mess Owner')}<div class="card"><div class="kv"><span>Role</span><b>Mess Owner</b></div><div class="kv"><span>Username</span><b>owner</b></div></div><button class="btn out" data-a="logout">${ic('logout',18)}Log out</button>`}
+${A.map(x=>`<div class="card clickable" role="button" tabindex="0" data-a="oview" data-s="${x.st.id}" aria-label="View ${esc(x.st.name)}"><div class="row" style="align-items:flex-start"><div style="min-width:0;flex:1"><b>${esc(x.st.name)}</b><div class="m">${x.st.id}${x.st.roll?' · Roll '+esc(x.st.roll):''} · Room ${esc(x.st.room)}${x.st.location?' · '+esc(x.st.location):''}</div></div>${dchip(x.td,'Today: ')}</div><div class="grid3" style="margin-top:12px">${[['Present',x.s.P],['Absent',x.s.A],['Leaves',x.s.V],['Lunch',x.s.L],['Dinner',x.s.D],['Meals',x.s.L+x.s.D]].map(tile).join('')}</div></div>`).join('')}`}
+function pcards(){const q=(ui.psq||'').trim().toLowerCase(),f=ui.pfilter||'PENDING';
+const L=S.subs.filter(x=>(f==='ALL'||x.status===f)&&(!q||[stuByCode(x.sid).name,x.sid,x.ref,x.fm,monthLabel(x.fm),String(x.amt)].some(v=>String(v).toLowerCase().includes(q))));
+if(!L.length)return`<div class="card" role="status"><b>${S.subs.length?'No matching submissions':'No payment proofs yet'}</b><p class="m" style="margin:4px 0 0">${S.subs.length?'Try another search or filter.':'When a student submits a payment screenshot it will appear here.'}</p></div>`;
+return L.map(x=>{const st=stuByCode(x.sid),d=dupInfo(x),open=ui.apv===x.id,rj=ui.rej===x.id;
+return`<div class="card"><div class="row" style="align-items:flex-start"><div style="min-width:0"><b>${esc(st.name)}</b><div class="m">${esc(x.sid)}${st.room?' · Room '+esc(st.room):''}</div></div><span class="chip ${x.status==='APPROVED'?'':x.status==='REJECTED'?'r':'y'}">${ic(x.status==='APPROVED'?'check':x.status==='REJECTED'?'x':'clock',16)}${x.status}</span></div>
+<div style="margin-top:12px"><div class="kv"><span>Fee month</span><b>${monthLabel(x.fm)}</b></div><div class="kv"><span>Claimed amount</span><b>₹${x.amt}</b></div><div class="kv"><span>Payment date</span><b>${fdy(x.pd)}</b></div><div class="kv"><span>Transaction ID</span><b>${esc(x.ref)}</b></div><div class="kv"><span>Submitted</span><b>${fdt(x.at)}</b></div>${x.vat?`<div class="kv"><span>${x.status==='APPROVED'?'Approved':'Rejected'}</span><b>${fdt(x.vat)}</b></div>`:''}${x.note?`<div class="kv"><span>Student note</span><b>${esc(x.note)}</b></div>`:''}</div>
+${d?`<div class="banner ${d.hard?'err':'warn'}" style="margin:12px 0 0">${ic('alert',20)}<span>${esc(d.msg)}</span></div>`:''}
+${x.status==='REJECTED'?`<div class="rej">Reason: ${esc(x.reason||'')}</div>`:''}
+<div class="stack" style="margin-top:12px"><button class="btn out" data-a="pview" data-p="${esc(x.path)}">${ic('eye',18)}${ui.pv&&ui.pv[x.path]?'Hide screenshot':'View screenshot'}</button>
+${x.status==='PENDING'&&!open&&!rj?`<div class="two"><button class="btn pri" data-a="apv" data-id="${x.id}" ${d&&d.hard?'disabled':''}>Approve</button><button class="btn bad" data-a="rej" data-id="${x.id}">Reject</button></div>`:''}
+${open?`<div class="card in"><b>Confirm approval of ₹${x.amt}</b><label class="opt" style="border:0;align-items:flex-start"><input type="checkbox" data-a="apvchk" ${ui.apvok?'checked':''} style="width:22px;height:22px;margin-top:2px;flex:none"><span>I checked my bank/UPI app and received ₹${x.amt} (ref ${esc(x.ref)}). A screenshot alone is not proof.</span></label><div class="two"><button class="btn pri" data-a="apvgo" data-id="${x.id}">Approve payment</button><button class="btn" data-a="pcancel">Cancel</button></div></div>`:''}
+${rj?`<div class="card in"><b>Reject this payment</b>${F('Reason (the student will see this)',`<textarea rows="2" data-in="rej_reason" placeholder="e.g. Amount not received in my account">${esc(ui.rej_reason||'')}</textarea>`)}<div class="two"><button class="btn bad" data-a="rejgo" data-id="${x.id}">Reject payment</button><button class="btn" data-a="pcancel">Cancel</button></div></div>`:''}</div>${proofImg(x.path)}</div>`}).join('')}
+function opay(){const f=ui.pfilter||'PENDING',pend=S.subs.filter(x=>x.status==='PENDING'),m=curMonth();
+let ver=0;S.students.forEach(st=>(S.pay[st.id]||[]).forEach(p=>{if((p.month||p.d.slice(0,7))===m)ver+=p.amt}));
+const cnt=k=>S.subs.filter(x=>x.status===k).length;
+return`${hd('Payments','Verify student payments')}
+${S.pg?'':`<div class="banner err">${ic('alert',20)}<span>${NEEDSQL}</span></div>`}
+<div class="banner warn">${ic('alert',20)}<span>Approve only after you see the money in your bank or UPI app. A screenshot is not proof of payment.</span></div>
+<div class="card"><div class="grid3">${[['Pending',pend.length],['Verified '+MON[+m.slice(5)-1],'₹'+ver],['Awaiting ₹','₹'+pend.reduce((a,x)=>a+x.amt,0)]].map(tile).join('')}</div><p class="m" style="margin:12px 0 0">Pending and rejected proofs are never counted as money received.</p></div>
+<div class="sb" style="margin-bottom:12px">${ic('search',20)}<input class="tx" type="search" autocomplete="off" data-in="psq" value="${esc(ui.psq||'')}" placeholder="Search name, ID, month or transaction ID" aria-label="Search payment submissions"></div>
+<div class="seg s4" role="group" aria-label="Status filter">${[['PENDING','Pending ('+cnt('PENDING')+')'],['APPROVED','Approved'],['REJECTED','Rejected'],['ALL','All']].map(a=>`<button type="button" data-a="pfilter" data-f="${a[0]}" aria-pressed="${f===a[0]}">${a[1]}</button>`).join('')}</div>
+<div id="pres">${pcards()}</div>
+<h2 class="sec">Audit trail</h2><div class="card">${S.audit.length?S.audit.slice(0,25).map(a=>{const x=S.subs.find(y=>y.id===a.submission_id);return`<div class="kv" style="align-items:flex-start"><span style="display:block"><b>${esc(a.action)}</b>${x?' · '+esc(stuByCode(x.sid).name):''}<br><span class="m pre">${esc(a.detail||'')}</span></span><span class="m" style="text-align:right">${fdt(a.at)}</span></div>`}).join(''):'<p class="m" style="margin:0">No approvals or rejections yet.</p>'}</div>`}
+function oprofile(){if(!ui.cfg_init)initCfg();const c=closing(),modes=['UPI','Cash','Bank transfer'];
+return`${hd('Settings','Mess owner')}
+${S.pg?'':`<div class="banner err">${ic('alert',20)}<span>${NEEDSQL}</span></div>`}
+<div class="card"><h2>${ic('wallet',22)}Payment details</h2><p class="m" style="margin:-4px 0 16px">Students see exactly what you enter here on their Fees page. Leave blank to show demo placeholders.</p>
+${F('Owner display name',`<input class="tx" data-in="cfg_name" value="${esc(ui.cfg_name||'')}" placeholder="Name students should see">`)}
+${F('UPI ID',`<input class="tx" data-in="cfg_upi" value="${esc(ui.cfg_upi||'')}" placeholder="yourname@bank" autocapitalize="off" autocomplete="off">`)}
+${F('Payment phone number',`<input class="tx" type="tel" inputmode="numeric" maxlength="10" data-in="cfg_phone" value="${esc(ui.cfg_phone||'')}" placeholder="10-digit number">`)}
+${F('Bank details (optional)',`<textarea rows="3" data-in="cfg_bank" placeholder="Account holder, bank, account number, IFSC. Never enter passwords, PINs or card details.">${esc(ui.cfg_bank||'')}</textarea>`)}
+${F('Instructions for students (optional)',`<textarea rows="2" data-in="cfg_instr" placeholder="e.g. Add your Student ID in the UPI remarks">${esc(ui.cfg_instr||'')}</textarea>`)}
+<div class="fl"><span>Supported payment modes</span>${modes.map(x=>`<label class="opt"><input type="checkbox" data-a="cfgmode" data-m="${x}" ${ui.cfg_modes.includes(x)?'checked':''} style="width:22px;height:22px"><span>${x}</span></label>`).join('')}</div>
+<div class="fl"><span>Payment QR code image</span><div class="qrbox">${ui.cfg_qr?`<img src="${ui.cfg_qr}" alt="Your QR code">`:'No QR uploaded yet'}</div>
+<div class="two"><label class="btn out fileb">${ic('upload',18)}${ui.cfg_qr?'Replace QR':'Upload QR'}<input type="file" accept="image/jpeg,image/png,image/webp" data-file="qr" aria-label="Upload payment QR code"></label>${ui.cfg_qr?`<button class="btn" data-a="qrremove">Remove</button>`:'<span></span>'}</div></div>
+<button class="btn pri" data-a="savepay">Save payment details</button></div>
+<div class="card"><h2>${ic('cal',22)}Mess closing date</h2><p class="m" style="margin:-4px 0 16px">${c.set?'Currently shown to students: '+fdl(c.d)+'.':'Not set. Students see “Closing date not announced yet”.'}</p>
+${F('Last working day',`<input type="date" data-in="cfg_close" value="${esc(ui.cfg_close||'')}">`)}
+${F('Announcement for students (optional)',`<textarea rows="2" data-in="cfg_note" placeholder="e.g. Please collect your pending dues before leaving">${esc(ui.cfg_note||'')}</textarea>`)}
+<div class="stack"><button class="btn pri" data-a="saveclose">Save closing date</button>${c.set?`<button class="btn out" data-a="clearclose">Remove closing date</button>`:''}</div></div>
+<div class="card"><div class="kv"><span>Role</span><b>Mess Owner</b></div><div class="kv"><span>Username</span><b>owner</b></div></div><button class="btn out" data-a="logout">${ic('logout',18)}Log out</button>`}
 /* ===== render ===== */
-function setView(html,navItems){document.getElementById('app').innerHTML=html+(toastMsg?`<div class="toast" role="status" aria-live="polite">${toastMsg}</div>`:'');
-document.getElementById('nav').innerHTML=navItems?`<div>${navItems.map(n=>`<button ${tab===n[0]?'aria-current="page"':''} class="${tab===n[0]?'act':''}" data-a="tab" data-t="${n[0]}"><span class="pill">${ic(n[1],22)}</span>${n[2]}</button>`).join('')}</div>`:''}
+function setView(html,navItems){document.getElementById('app').innerHTML=html+(toastMsg?`<div class="toast" role="status" aria-live="polite">${esc(toastMsg)}</div>`:'');
+document.getElementById('nav').innerHTML=navItems?`<div>${navItems.map(n=>`<button ${tab===n[0]?'aria-current="page"':''} class="${tab===n[0]?'act':''}" data-a="tab" data-t="${n[0]}"><span class="pill">${ic(n[1],22)}${n[3]?`<span class="bdg" aria-label="${n[3]} pending">${n[3]}</span>`:''}</span>${n[2]}</button>`).join('')}</div>`:''}
 function render(){const ae=document.activeElement;if(ae&&/INPUT|TEXTAREA|SELECT/.test(ae.tagName)&&!toastMsg&&ae.type!=='radio')return;
 if(S.loading){setView('<p class="m" style="text-align:center;margin-top:40vh">Loading…</p>');return}
 if(!cfgOk()){setView('<div class="hd"><h1>Setup needed</h1></div><div class="card">Open index.html and paste your Supabase Project URL and anon key near the top of the script. See README.md.</div>');return}
 if(ui.recovery){setView(resetScreen());return}
 const u=S.user;
 if(!u)setView(login());
-else if(u.role==='owner')setView(({otoday,oattend,ostudents,oprofile}[tab]||otoday)(),[['otoday','dash','Today'],['oattend','clip','Attendance'],['ostudents','users','Students'],['oprofile','user','Profile']]);
+else if(u.role==='owner')setView(({otoday,oattend,ostudents,opay,oprofile}[tab]||otoday)(),[['otoday','dash','Today'],['oattend','clip','Attendance'],['ostudents','users','Students'],['opay','receipt','Payments',S.subs.filter(x=>x.status==='PENDING').length],['oprofile','sliders','Settings']]);
 else setView(({home,meals,leave,fees,profile}[tab]||home)(),[['home','home','Home'],['meals','utensils','Meals'],['leave','cal','Leave'],['fees','wallet','Fees'],['profile','user','Profile']])}
 
 let busy=false;
 document.addEventListener('click',async e=>{const b=e.target.closest('[data-a]');if(!b||b.disabled||busy)return;const a=b.dataset.a;if(a==='eye'){const i=b.parentElement.querySelector('input'),sh=i.type==='password';i.type=sh?'text':'password';b.innerHTML=ic(sh?'eyeoff':'eye',20);b.setAttribute('aria-label',sh?'Hide password':'Show password');return}if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();busy=true;
-try{if(a==='tab'){tab=b.dataset.t;ui.date='';ui.view='';render();scrollTo(0,0)}
+try{if(a==='tab'){tab=b.dataset.t;ui.date='';ui.view='';ui.apv=ui.rej=null;render();scrollTo(0,0)}
 else if(a==='goleave'){tab='leave';render();scrollTo(0,0)}
 else if(a==='apply')await applyLeave();
 else if(a==='omark')await ownerMark(b.dataset.s,b.dataset.m,b.dataset.v);
+else if(a==='omeal'){ui.omeal=b.dataset.m;render()}
+else if(a==='pfilter'){ui.pfilter=b.dataset.f;ui.apv=ui.rej=null;render()}
+else if(a==='pview')await viewProof(b.dataset.p);
+else if(a==='apv'){ui.apv=+b.dataset.id;ui.rej=null;ui.apvok=false;render()}
+else if(a==='apvchk'){ui.apvok=b.checked;return}
+else if(a==='apvgo')await decide('A',+b.dataset.id);
+else if(a==='rej'){ui.rej=+b.dataset.id;ui.apv=null;ui.rej_reason='';render()}
+else if(a==='rejgo')await decide('R',+b.dataset.id);
+else if(a==='pcancel'){ui.apv=ui.rej=null;render()}
+else if(a==='copyupi')await copyUpi();
+else if(a==='qrview'){ui.qrbig=!ui.qrbig;render()}
+else if(a==='psubmit')await submitProof();
+else if(a==='pfclear'){if(ui.pf_pre)URL.revokeObjectURL(ui.pf_pre);ui.pf_file=null;ui.pf_pre='';ui.pf_err='';render()}
+else if(a==='resub'){const x=S.subs.find(y=>y.id===+b.dataset.id);if(x){ui.pf_amt=String(x.amt);ui.pf_month=x.fm;ui.pf_date=x.pd;ui.pf_ref=x.ref;ui.pf_note=x.note;ui.pf_done=false;render();const el=document.getElementById('proofform');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});toast('Attach the correct screenshot and resubmit')}}
+else if(a==='cfgmode'){const m=b.dataset.m;ui.cfg_modes=b.checked?[...new Set([...ui.cfg_modes,m])]:ui.cfg_modes.filter(x=>x!==m);return}
+else if(a==='qrremove'){ui.cfg_qr='';render()}
+else if(a==='savepay')await savePay();
+else if(a==='saveclose')await saveClose(false);
+else if(a==='clearclose')await saveClose(true);
 else if(a==='oview')await openStudent(b.dataset.s);
 else if(a==='oback'){ui.view='';render();scrollTo(0,0)}
 else if(a==='opay')await recordPayment();
@@ -323,7 +550,14 @@ else if(a==='resend')await doResend();
 else if(a==='logout'){const wasOwner=S.user&&S.user.role==='owner';await sb.auth.signOut();S=blank();ui={reason:'Going home',note:'',date:'',lrole:wasOwner?'owner':'student'};tab='home';render()}}
 catch(err){toast('Something went wrong. Check your internet.')}finally{busy=false}});
 document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('[role=button][data-a]')){e.preventDefault();e.target.click()}});
-document.addEventListener('input',e=>{const k=e.target.dataset.in;if(!k)return;ui[k]=e.target.value;if(k==='date'){ae=null;e.target.blur();render()}});
+document.addEventListener('input',e=>{const k=e.target.dataset.in;if(!k)return;ui[k]=e.target.value;
+if(k==='osq')return refreshAtt();
+if(k==='psq'){const el=document.getElementById('pres');if(el)el.innerHTML=pcards();return}
+if(k==='date'||k==='pf_month'){ae=null;e.target.blur();render()}});
+document.addEventListener('change',async e=>{const t=e.target,w=t.dataset&&t.dataset.file;if(!w)return;const f=t.files&&t.files[0];if(!f)return;t.blur();if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
+let err=checkImg(f);if(!err){try{await loadImg(f)}catch(x){err='This file could not be read as an image. Try another screenshot.'}}
+if(w==='proof'){if(ui.pf_pre)URL.revokeObjectURL(ui.pf_pre);if(err){ui.pf_file=null;ui.pf_pre='';ui.pf_err=err;render();return toast(err)}ui.pf_file=f;ui.pf_pre=URL.createObjectURL(f);ui.pf_err='';ui.pf_done=false;render()}
+else if(w==='qr'){if(err)return toast(err);try{let b=await shrink(f,600,'image/png');if(b.size>300000)b=await shrink(f,600,'image/jpeg',.9);ui.cfg_qr=await toDataUrl(b);render();toast('QR ready. Tap Save payment details to publish it.')}catch(x){toast('Could not process that image')}}});
 var ae;S=blank();S.loading=true;if(RECOVERY)ui.recovery=true;if(OWNER_LINK)ui.lrole='owner';
 if(cfgOk())sb.auth.onAuthStateChange(ev=>{if(ev==='PASSWORD_RECOVERY'){ui.recovery=true;render()}});
 if(/error_code=otp_expired|error_description=/.test(location.hash)){setTimeout(()=>toast('That reset link has expired. Please request a new one.'),500);try{history.replaceState(null,'',location.pathname)}catch(e){}}
