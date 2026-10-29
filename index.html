@@ -124,7 +124,7 @@ let OFF=0;
 function now(){return new Date(Date.now()+OFF+19800000+new Date().getTimezoneOffset()*60000)}
 const mins=()=>{const d=now();return d.getHours()*60+d.getMinutes()};
 const today=()=>key(now());
-const blank=()=>({students:[],att:{},pay:{},leaves:[],user:null,student:null,loading:false,cfg:{},subs:[],audit:[],pg:false,ext:false});
+const blank=()=>({students:[],att:{},pay:{},leaves:[],user:null,student:null,loading:false,cfg:{},subs:[],audit:[],pg:false,ext:false,periods:[],lp:false});
 const email=m=>m+'@messmate.app';
 function save(){}
 async function all(q){let out=[],i=0;for(;;){const{data,error}=await q().range(i,i+999);if(error)throw error;out=out.concat(data);if(data.length<1000)break;i+=1000}return out}
@@ -149,6 +149,7 @@ try{const c=await sb.from('mess_settings').select('*').eq('id',1).maybeSingle();
 const SB=await all(()=>sb.from('payment_submissions').select('*').order('id',{ascending:false}));SB.forEach(r=>{const k=code[r.student_id];if(k)n.subs.push(mapSub(r,k))});
 if(owner){const au=await sb.from('payment_audit').select('*').order('id',{ascending:false}).limit(40);if(!au.error)n.audit=au.data||[]}
 n.pg=true}catch(e){n.pg=false;n.cfg={};n.subs=[];n.audit=[]}
+try{const PR=await all(()=>sb.from('leave_periods').select('*').order('id'));PR.forEach(r=>{const c=code[r.student_id];if(c)n.periods.push({id:r.id,sid:c,from:r.start_date,to:r.end_date,reason:r.reason,note:r.note||'',appliedAt:r.applied_at})});expandPeriods(n.leaves,n.periods);n.lp=true}catch(e){n.lp=false;n.periods=[]}
 n.user={role:me.role,id:owner?'owner':me.student_code};S=n;sync()}
 async function boot(){try{await loadData()}catch(e){S=blank();toast('Could not load data. Check your internet.')}}
 const okMail=e=>/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e);
@@ -189,7 +190,7 @@ S.att[code]=S.att[code]||{};S.att[code][k]=S.att[code][k]||{};S.att[code][k][m]=
 async function openStudent(code){const st=S.students.find(x=>x.id===code);if(!st)return;
 try{const A=await all(()=>sb.from('attendance').select('*').eq('student_id',st.uid).order('id')),L=await all(()=>sb.from('leaves').select('*').eq('student_id',st.uid).order('id'));
 S.att[code]={};A.forEach(r=>{S.att[code][r.date]=S.att[code][r.date]||{};S.att[code][r.date][r.meal]=r.status});
-S.leaves=S.leaves.filter(l=>l.sid!==code).concat(L.map(r=>mapLv(r,code)))}catch(e){return toast('Could not load student')}
+S.leaves=S.leaves.filter(l=>l.sid!==code).concat(L.map(r=>mapLv(r,code)));expandPeriods(S.leaves,S.periods,code)}catch(e){return toast('Could not load student')}
 ui.view=code;ui.eroll=st.roll;ui.eroom=st.room;ui.efee=String(st.fee);ui.pamt='';ui.pmode='UPI';render();scrollTo(0,0)}
 async function recordPayment(){const st=S.students.find(x=>x.id===ui.view),amt=parseInt(ui.pamt,10);if(!st)return;if(!(amt>0))return toast('Enter a valid amount');
 const row={student_id:st.uid,amount:amt,mode:ui.pmode||'UPI'};if(S.pg)row.fee_month=curMonth();
@@ -202,6 +203,10 @@ function exportCsv(){const rows=[['Name','Student ID','Mobile','Room','Present d
 S.students.forEach(st=>withStu(st,()=>{const s=summary(),fi=feeInfo(curMonth());rows.push([st.name,st.id,st.phone,st.room,s.P,s.A,s.V,s.L+s.D,st.fee,fi.paid,fi.rem,st.roll,fi.st])}));
 const csv=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
 const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='messmate-'+today().slice(0,7)+'.csv';a.click()}
+const nextDay=d=>{const a=d.split('-').map(Number);return key(new Date(a[0],a[1]-1,a[2]+1))};
+/* multi-day leave periods become one leave entry per day, up to today (future days turn into leave when they arrive) */
+function expandPeriods(leaves,periods,only){const t=today();periods.forEach(p=>{if(only&&p.sid!==only)return;const last=p.to&&p.to<t?p.to:t;let d=p.from,i=0;
+for(;d<=last&&i<400;d=nextDay(d),i++){if(!leaves.some(l=>l.sid===p.sid&&l.date===d))leaves.push({id:'p'+p.id+'-'+d,sid:p.sid,date:d,reason:p.reason,note:p.note,appliedAt:p.appliedAt,status:'APPLIED',until:p.to||'open'})}});return leaves}
 const MONF=['January','February','March','April','May','June','July','August','September','October','November','December'];
 const fdl=k=>{const[y,m,d]=k.split('-');return +d+' '+MONF[m-1]+' '+y};
 const ist=iso=>new Date(new Date(iso).getTime()+19800000);
@@ -273,6 +278,22 @@ async function saveClose(clear){if(!S.pg)return toast(NEEDSQL);const d=clear?'':
 const row={id:1,closing_date:d||null,closing_note:clear?null:(ui.cfg_note||'').trim()||null,updated_at:new Date().toISOString()};
 const{error}=await sb.from('mess_settings').upsert(row,{onConflict:'id'});if(error)return toast('Could not save. Only the owner account can change this.');
 S.cfg=Object.assign({},S.cfg,row);if(clear){ui.cfg_close='';ui.cfg_note=''}toast(clear?'Closing date removed':'Closing date saved. Students will see it on their Home page.')}
+/* ===== multi-day leave ===== */
+const NEEDLP='Multi-day leave is not switched on yet. Ask the owner to run multiday_leave_setup.sql in Supabase.';
+const minFrom=()=>mins()<1020?today():nextDay(today());
+const dayDiff=(a,b)=>{const x=a.split('-').map(Number),y=b.split('-').map(Number);return Math.round((Date.UTC(y[0],y[1]-1,y[2])-Date.UTC(x[0],x[1]-1,x[2]))/864e5)};
+async function applyPeriod(){const st=S.student;if(!S.lp)return toast(NEEDLP);const type=ui.lp_type||'range',min=minFrom(),from=ui.lp_from||min,to=type==='range'?(ui.lp_to||from):null;
+if(from<min)return toast(from===today()?'Leave for today is closed (5:00 PM). Choose tomorrow or later.':'Choose a start date from '+fdy(min));
+if(to&&to<from)return toast('The last leave day cannot be before the first day');if(to&&dayDiff(from,to)>60)return toast('You can apply for up to 60 days at a time');
+const mine=S.periods.filter(p=>p.sid===st.id);
+if(type==='open'&&mine.some(p=>!p.to))return toast('You already have a leave running until you return. Tap "I\'m back" first.');
+const hit=mine.some(p=>from<=(p.to||'9999-12-31')&&(to||'9999-12-31')>=p.from)||myLeaves().some(l=>l.date>=from&&(!to||l.date<=to));
+if(hit)return toast('Some of these days already have leave applied');
+const{error}=await sb.from('leave_periods').insert({student_id:st.uid,start_date:from,end_date:to,reason:ui.reason,note:(ui.note||'').trim()||null});
+if(error)return toast(error.code==='23505'?'You already have a leave running until you return.':'Could not apply leave. Leave for today closes at 5:00 PM.');
+ui.note='';ui.lp_from=ui.lp_to='';await boot();render();toast(type==='open'?'Leave applied. You stay on leave until you tap "I\'m back".':'Leave applied for '+(dayDiff(from,to)+1)+' day(s)')}
+async function endLeave(id){const{error}=await sb.rpc('end_leave',{p_id:id});if(error)return toast('Could not update leave. Try again.');
+await boot();render();toast('Welcome back! Your leave has ended. The owner will mark your attendance.')}
 const myLeaves=()=>S.leaves.filter(l=>l.sid===S.student.id);
 const leaveOn=k=>myLeaves().find(l=>l.date===k);
 const fin=()=>mins()>=1320;
@@ -358,8 +379,21 @@ else body=`<span class="chip">${ic('check',16)}Applications Open</span><p class=
 return`<div class="card" id="leavecard"><h2>${ic('cal',22)}Apply for Today's Leave</h2><p class="m" style="margin:-4px 0 12px">Closing time: 5:00 PM · Status: ${lbl}</p>${body}</div>`}
 function meals(){const t=today();if(!ui.date)ui.date=t;const ks=[...new Set([...Object.keys(AT()),...myLeaves().map(l=>l.date),t])].sort().reverse();
 return`${hd('Meal History','Pick a date to see details')}<div class="card"><h2>Select date</h2>${F('Date',`<input type="date" value="${ui.date}" max="${t}" data-in="date">`)}${dayCard(ui.date,true)}</div><h2 class="sec">Previous days</h2>${ks.map(k=>dayCard(k)).join('')}`}
+const untilTxt=u=>u==='open'?'until they return':u?'until '+fdy(u):'';
+function periodCard(){if(!S.lp)return`<div class="card"><h2>${ic('cal',22)}Leave for multiple days</h2><p class="m" style="margin:0">Not available yet. Ask your mess owner to switch it on.</p></div>`;
+const type=ui.lp_type||'range',min=minFrom(),from=ui.lp_from||min,mine=S.periods.filter(p=>p.sid===S.student.id&&(!p.to||p.to>=today())).sort((a,b)=>a.from.localeCompare(b.from)),t=today();
+return`<div class="card" id="periodcard"><h2>${ic('cal',22)}Leave for multiple days</h2>
+${mine.map(p=>{const on=p.from<=t;return`<div class="card in"><div class="row" style="align-items:flex-start"><div><b>${p.to?fd(p.from)+' to '+fdy(p.to):'From '+fdy(p.from)}</b><div class="m">${p.to?(dayDiff(p.from,p.to)+1)+' day(s)':'Until you confirm you are back'} · ${esc(p.reason)}</div></div><span class="chip i">${on?'Active':'Upcoming'}</span></div><button class="btn out" style="margin-top:12px" data-a="endleave" data-id="${p.id}">${on?"I'm back (end leave)":'Cancel this leave'}</button></div>`}).join('')}
+<p class="m" style="margin:${mine.length?'12px':'-4px'} 0 12px">Going away for a few days? Apply once. ${mine.length?'':''}Days that have not arrived yet are not counted until they come.</p>
+<div class="seg" role="group" aria-label="Leave length"><button type="button" data-a="lptype" data-t="range" aria-pressed="${type==='range'}">Until a date</button><button type="button" data-a="lptype" data-t="open" aria-pressed="${type==='open'}">Until I'm back</button></div>
+${F('First leave day',`<input type="date" data-in="lp_from" value="${from}" min="${min}">`)}
+${type==='range'?F('Last leave day',`<input type="date" data-in="lp_to" value="${ui.lp_to||from}" min="${from}">`):`<p class="m" style="margin:0 0 16px">You stay on leave every day until you tap <b>I'm back</b> here. Tap it on the day you return.</p>`}
+${F('Leave reason',`<select data-in="reason">${['Going home','Sick','Family function','Other'].map(r=>`<option ${ui.reason===r?'selected':''}>${r}</option>`).join('')}</select>`)}
+${F('Note (optional)',`<textarea rows="2" data-in="note" placeholder="Add a short note">${esc(ui.note)}</textarea>`)}
+<button class="btn pri" data-a="applyperiod">Apply leave</button>
+<p class="m" style="margin:12px 0 0">Starting today is possible until 5:00 PM. Later days can be booked any time.</p></div>`}
 function leave(){const L=myLeaves().slice().sort((a,b)=>b.date.localeCompare(a.date));
-return`${hd('Leave','Apply and review leave')}${leaveCard()}<h2 class="sec">Leave History</h2>${L.length?L.map(l=>`<div class="card"><div class="row"><b>${fdy(l.date)}</b><span class="chip i">${ic('cal',16)}${l.status==='APPLIED'?'Applied':esc(l.status)}</span></div><p class="m" style="margin:8px 0 0">Reason: ${esc(l.reason)}${l.note?'<br>Note: '+esc(l.note):''}<br>Applied at: ${ft(l.appliedAt)}</p></div>`).join(''):'<div class="card m">No leave applications yet.</div>'}`}
+return`${hd('Leave','Apply and review leave')}${leaveCard()}${periodCard()}<h2 class="sec">Leave History</h2>${L.length?L.map(l=>`<div class="card"><div class="row"><b>${fdy(l.date)}</b><span class="chip i">${ic('cal',16)}${l.status==='APPLIED'?'Applied':esc(l.status)}</span></div><p class="m" style="margin:8px 0 0">Reason: ${esc(l.reason)}${l.note?'<br>Note: '+esc(l.note):''}${l.until?'<br>Multi-day leave '+untilTxt(l.until):''}<br>Applied at: ${ft(l.appliedAt)}</p></div>`).join(''):'<div class="card m">No leave applications yet.</div>'}`}
 function payCard(fi,m){const c=S.cfg||{},ok=!!c.upi_id,modes=(c.modes&&c.modes.length?c.modes:['UPI','Cash']).join(', ');
 const name=c.owner_name||'Mess Owner',upi=c.upi_id||'demo.owner@upi',phone=c.pay_phone||'Not provided';
 const upiLink=ok?'upi://pay?pa='+encodeURIComponent(c.upi_id)+'&pn='+encodeURIComponent(name)+(fi.rem>0?'&am='+fi.rem+'.00':'')+'&cu=INR&tn='+encodeURIComponent('Mess fee '+monthLabel(m)):'';
@@ -443,7 +477,7 @@ return`${hd('Mark Attendance',now().toDateString())}
 <p class="m" style="margin:0 2px 12px">Students cannot mark themselves. You can also search by room number.</p><div id="sres">${attList(D)}</div>`}
 function otoday(){const A=allStats(),on=A.filter(a=>a.l);
 return`<div class="hd"><h1>Owner Dashboard</h1><p class="dt">${now().toDateString()} · ${ft(now())}</p></div><div class="card"><div class="grid3">${[['Students',A.length],['On leave today',on.length],['Eating today',A.length-on.length]].map(tile).join('')}</div></div>
-<div class="card"><h2>${ic('cal',22)}On Leave Today</h2>${on.length?on.map(a=>`<div class="kv"><span style="display:block"><b>${esc(a.st.name)}</b><br><span class="m">Room ${esc(a.st.room)} · ${esc(a.l.reason)} · ${ft(a.l.appliedAt)}</span></span><span class="chip i">${ic('cal',16)}Leave</span></div>`).join(''):'<p class="m" style="margin:0">Nobody is on leave today.</p>'}</div><p class="m" style="margin:0 2px">Leave closes at 5:00 PM · attendance finalizes at 10:00 PM.</p>`}
+<div class="card"><h2>${ic('cal',22)}On Leave Today</h2>${on.length?on.map(a=>`<div class="kv"><span style="display:block"><b>${esc(a.st.name)}</b><br><span class="m">Room ${esc(a.st.room)} · ${esc(a.l.reason)}${a.l.until?' · '+untilTxt(a.l.until):''} · ${ft(a.l.appliedAt)}</span></span><span class="chip i">${ic('cal',16)}Leave</span></div>`).join(''):'<p class="m" style="margin:0">Nobody is on leave today.</p>'}</div><p class="m" style="margin:0 2px">Leave closes at 5:00 PM · attendance finalizes at 10:00 PM.</p>`}
 function odetail(st){return withStu(st,()=>{const m=summary(),a=summary(true),fi=feeInfo(curMonth()),paid=fi.paid,fee=st.fee,L=myLeaves().slice().sort((x,y)=>y.date.localeCompare(x.date));
 return`<div class="hd"><button class="btn sm" data-a="oback">${ic('back',18)}Back</button><h1>${esc(st.name)}</h1><p>${esc(st.id)}${st.roll?' · Roll '+esc(st.roll):''} · Room ${esc(st.room)}</p></div>
 <div class="card"><div class="kv"><span>Mobile</span><b>${esc(st.phone)}</b></div>${st.location?`<div class="kv"><span>Location</span><b>${esc(st.location)}</b></div>`:''}</div>
@@ -515,6 +549,9 @@ try{if(a==='tab'){tab=b.dataset.t;ui.date='';ui.view='';ui.apv=ui.rej=null;rende
 else if(a==='goleave'){tab='leave';render();scrollTo(0,0)}
 else if(a==='apply')await applyLeave();
 else if(a==='omark')await ownerMark(b.dataset.s,b.dataset.m,b.dataset.v);
+else if(a==='applyperiod')await applyPeriod();
+else if(a==='endleave')await endLeave(+b.dataset.id);
+else if(a==='lptype'){ui.lp_type=b.dataset.t;render()}
 else if(a==='omeal'){ui.omeal=b.dataset.m;render()}
 else if(a==='pfilter'){ui.pfilter=b.dataset.f;ui.apv=ui.rej=null;render()}
 else if(a==='pview')await viewProof(b.dataset.p);
@@ -553,7 +590,7 @@ document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.tar
 document.addEventListener('input',e=>{const k=e.target.dataset.in;if(!k)return;ui[k]=e.target.value;
 if(k==='osq')return refreshAtt();
 if(k==='psq'){const el=document.getElementById('pres');if(el)el.innerHTML=pcards();return}
-if(k==='date'||k==='pf_month'){ae=null;e.target.blur();render()}});
+if(k==='date'||k==='pf_month'||k==='lp_from'){ae=null;e.target.blur();render()}});
 document.addEventListener('change',async e=>{const t=e.target,w=t.dataset&&t.dataset.file;if(!w)return;const f=t.files&&t.files[0];if(!f)return;t.blur();if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
 let err=checkImg(f);if(!err){try{await loadImg(f)}catch(x){err='This file could not be read as an image. Try another screenshot.'}}
 if(w==='proof'){if(ui.pf_pre)URL.revokeObjectURL(ui.pf_pre);if(err){ui.pf_file=null;ui.pf_pre='';ui.pf_err=err;render();return toast(err)}ui.pf_file=f;ui.pf_pre=URL.createObjectURL(f);ui.pf_err='';ui.pf_done=false;render()}
